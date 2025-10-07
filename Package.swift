@@ -4,16 +4,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "swift-irc3",
+    name: "swift-irc-generated",
     platforms: [
         .iOS(.v18),
-        .macOS(.v15)
+        .macOS(.v15),
     ],
     products: [
-        .library(name: "IRC3", targets: ["IRC3"]),
+        .library(name: "IRC", targets: ["IRC"])
     ],
     targets: [
-        .target(name: "IRC3"),
-        .testTarget(name: "IRC3Tests", dependencies: ["IRC3"]),
+        .target(name: "IRC"),
+        .testTarget(name: "IRCTests", dependencies: ["IRC"]),
+        .executableTarget(name: "SimpleBot", dependencies: ["IRC"], path: "Examples/SimpleBot"),
     ]
 )
