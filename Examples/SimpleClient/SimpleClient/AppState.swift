@@ -102,9 +102,88 @@ class AppState {
         Task {
             do {
                 let results = try await client.list()
-                self.channels = Dictionary(uniqueKeysWithValues: results.entries.map { ($0.channel, $0) })
+                self.channels = Dictionary(
+                    uniqueKeysWithValues: results.entries.map { ($0.channel, $0) })
             } catch {
                 print(error)
+            }
+        }
+    }
+
+    func executeSlashCommand(_ command: SlashCommand, currentChannel: String? = nil) {
+        Task {
+            do {
+                switch command {
+                case .join(let channel, let key):
+                    try await client.join(channel, key: key)
+                    let result = try await client.names(channel)
+                    let newChannel = Channel(name: channel, members: Set(result.names))
+                    joined[newChannel.name] = newChannel
+                    selected = .channel(newChannel)
+
+                case .part(let channel, let reason):
+                    try await client.part(channel, reason: reason)
+                    joined.removeValue(forKey: channel)
+                    if case .channel(let ch) = selected, ch.name == channel {
+                        selected = .console
+                    }
+
+                case .topic(let channel, let newTopic):
+                    if let newTopic = newTopic {
+                        try await client.setTopic(channel, topic: newTopic)
+                    } else {
+                        try await client.getTopic(channel)
+                    }
+
+                case .kick(let channel, let nick, let reason):
+                    try await client.kick(channel, nick: nick, reason: reason)
+
+                case .mode(let target, let modes):
+                    // Send raw MODE command
+                    try await client.send(.mode(target: target, modes: modes))
+
+                case .whois(let nick):
+                    let result = try await client.whois(nick)
+                    var info = "\(result.nick)"
+                    if let user = result.username, let host = result.host {
+                        info += " (\(user)@\(host))"
+                    }
+                    if let realname = result.realname {
+                        info += " - \(realname)"
+                    }
+                    if let account = result.account {
+                        info += " [account: \(account)]"
+                    }
+                    if result.isAway, let msg = result.awayMessage {
+                        info += " (away: \(msg))"
+                    }
+                    print("WHOIS: \(info)")
+                    if !result.channels.isEmpty {
+                        print("  Channels: \(result.channels.joined(separator: " "))")
+                    }
+
+                case .names(let channel):
+                    let result = try await client.names(channel)
+                    print("NAMES: \(result.names.count) users in \(channel)")
+                    print("  \(result.names.joined(separator: ", "))")
+
+                case .list(let channel):
+                    let results = try await client.list(channel)
+                    self.channels = Dictionary(
+                        uniqueKeysWithValues: results.entries.map { ($0.channel, $0) })
+                    print("LIST: Found \(results.entries.count) channels")
+
+                case .quit(let reason):
+                    try await client.disconnect(reason: reason ?? "Quit")
+
+                case .nick(let newNick):
+                    try await client.send(.nick(newNick))
+
+                case .msg(let target, let text):
+                    try await client.privmsg(target, text)
+                }
+            } catch {
+                print("Error executing slash command: \(error)")
             }
         }
     }
@@ -122,47 +201,48 @@ class AppState {
             case .registered:
                 state = .connected
 
-            case let .disconnected(error):
+            case .disconnected(let error):
                 state = .disconnected
                 print("Disconnected reason: \(error?.localizedDescription ?? "Unknown")")
 
-            case let .privmsg(target, sender, text, _):
+            case .privmsg(let target, let sender, let text, _):
                 messageCount += 1
-                await handleCommands(target: target, sender: sender, text: text, messageCount: messageCount)
+                await handleCommands(
+                    target: target, sender: sender, text: text, messageCount: messageCount)
 
-            case let .notice(target, sender, text, _):
+            case .notice(let target, let sender, let text, _):
                 print("NOTICE: \(target) - \(sender) :\(text)")
 
-            case let .join(channel, nick, _):
+            case .join(let channel, let nick, _):
                 channelInsert(nick: nick, channel: channel)
 
-            case let .part(channel, nick, _, _):
+            case .part(let channel, let nick, _, _):
                 channelRemove(nick: nick, channel: channel)
 
-            case let .quit(nick, _, _):
+            case .quit(let nick, _, _):
                 for (key, _) in joined {
                     channelRemove(nick: nick, channel: key)
                 }
 
-            case let .kick(channel, kicked, _, _, _):
+            case .kick(let channel, let kicked, _, _, _):
                 channelRemove(nick: kicked, channel: channel)
 
-            case let .nick(oldNick, newNick, _):
+            case .nick(let oldNick, let newNick, _):
                 for (key, _) in joined {
                     channelRemove(nick: oldNick, channel: key)
                     channelInsert(nick: newNick, channel: key)
                 }
 
-            case let .topic(channel, topic, _):
+            case .topic(let channel, let topic, _):
                 if var existing = joined[channel] {
                     existing.topic = topic
                     joined[channel] = existing
                 }
 
-            case let .mode(target, modes, _):
+            case .mode(let target, let modes, _):
                 print("MODE: \(target) - \(modes)")
 
-            case let .error(error):
+            case .error(let error):
                 print("ERROR: \(error)")
 
             case .message:

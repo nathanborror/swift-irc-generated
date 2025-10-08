@@ -5,7 +5,7 @@ struct ChannelView: View {
     @Environment(AppState.self) var state
 
     let channel: AppState.Channel
-    
+
     @State var text = ""
 
     var messages: [Message] {
@@ -68,7 +68,29 @@ struct ChannelView: View {
     }
 
     func handleSubmit() {
-        state.privmsg(target: channel.name, text: text)
+        guard !text.isEmpty else { return }
+
+        // Check if this is a slash command
+        if let command = SlashCommand.parse(text) {
+            // Handle commands that need current channel context
+            let finalCommand: SlashCommand
+            switch command {
+            case .topic(_, let newTopic):
+                // If no channel specified, use current channel
+                finalCommand = .topic(channel: channel.name, newTopic: newTopic)
+            case .names(_):
+                // Use current channel for names if not specified
+                finalCommand = .names(channel: channel.name)
+            default:
+                finalCommand = command
+            }
+
+            state.executeSlashCommand(finalCommand, currentChannel: channel.name)
+        } else {
+            // Regular message
+            state.privmsg(target: channel.name, text: text)
+        }
+
         text = ""
     }
 
