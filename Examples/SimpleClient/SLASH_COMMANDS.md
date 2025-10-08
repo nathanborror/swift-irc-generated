@@ -39,33 +39,31 @@ Leave a channel.
 ```
 
 #### `/topic` or `/t`
-View or set the channel topic. When used without arguments in a channel view, it operates on the current channel.
+View or set the channel topic. Operates on the currently selected channel.
 
 **Syntax:**
 ```
-/topic <channel> [new topic]
+/topic [new topic]
 /t [new topic]
 ```
 
 **Examples:**
 ```
-/topic #swift                    # View topic
-/topic #swift Swift Programming  # Set topic
-/t New topic for current channel # Set topic in current channel
+/topic                           # View topic
+/topic Swift Programming         # Set topic
+/t New topic for current channel # Set topic
 ```
 
 #### `/names`
-List users in a channel. When used without arguments in a channel view, it operates on the current channel.
+List users in the currently selected channel.
 
 **Syntax:**
 ```
-/names <channel>
 /names
 ```
 
 **Examples:**
 ```
-/names #swift
 /names
 ```
 
@@ -183,10 +181,63 @@ Disconnect from the server.
 
 ## Context-Aware Commands
 
-When you're in a channel view, some commands will automatically use the current channel if you don't specify one:
+The following commands operate on the currently selected channel and can only be used when you're in a channel view:
 
-- `/topic` - Sets/views the topic for the current channel
+- `/topic` or `/t` - Sets/views the topic for the current channel
 - `/names` - Lists users in the current channel
+
+If you try to use these commands outside of a channel (e.g., in the console view), you'll see an error message.
+
+## Usage Examples
+
+Here are some common workflow examples demonstrating the improved slash command behavior:
+
+### Viewing and Setting Channel Topics
+
+When you're in the `#swift` channel view:
+
+```
+# View the current topic
+/topic
+# or
+/t
+
+# Set a new topic
+/topic Welcome to the Swift channel!
+# or
+/t Welcome to the Swift channel!
+```
+
+No need to specify `#swift` - the command automatically uses the currently selected channel.
+
+### Checking Channel Members
+
+When you're in any channel view:
+
+```
+# List all members in the current channel
+/names
+```
+
+This will show you all users in whatever channel you're currently viewing.
+
+### Combining Commands
+
+A typical workflow joining and configuring a channel:
+
+```
+# Join a new channel
+/join #myproject
+
+# Now that you're in #myproject, set the topic
+/t Project discussion and coordination
+
+# Check who's already in the channel
+/names
+
+# Change your nick
+/nick alice_dev
+```
 
 ## Implementation Details
 

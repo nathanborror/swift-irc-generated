@@ -36,6 +36,17 @@ struct ChannelView: View {
                             Text("\(messages[index].nick ?? "") joined")
                         }
                         .foregroundStyle(.secondary)
+                    case "TOPIC":
+                        HStack(spacing: 12) {
+                            Text(timestamp(for: messages[index]))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 60, alignment: .trailing)
+                            Text(Image(systemName: "flag"))
+                                .fontWeight(.semibold)
+                                .frame(width: 100, alignment: .trailing)
+                            Text("Topic changed '\(messages[index].params.last ?? "")'")
+                        }
+                        .foregroundStyle(.secondary)
                     default:
                         HStack(spacing: 12) {
                             Text(timestamp(for: messages[index]))
@@ -72,20 +83,7 @@ struct ChannelView: View {
 
         // Check if this is a slash command
         if let command = SlashCommand.parse(text) {
-            // Handle commands that need current channel context
-            let finalCommand: SlashCommand
-            switch command {
-            case .topic(_, let newTopic):
-                // If no channel specified, use current channel
-                finalCommand = .topic(channel: channel.name, newTopic: newTopic)
-            case .names(_):
-                // Use current channel for names if not specified
-                finalCommand = .names(channel: channel.name)
-            default:
-                finalCommand = command
-            }
-
-            state.executeSlashCommand(finalCommand, currentChannel: channel.name)
+            state.executeSlashCommand(command, currentChannel: channel.name)
         } else {
             // Regular message
             state.privmsg(target: channel.name, text: text)

@@ -3,11 +3,11 @@ import Foundation
 enum SlashCommand {
     case join(channel: String, key: String? = nil)
     case part(channel: String, reason: String? = nil)
-    case topic(channel: String, newTopic: String?)
+    case topic(newTopic: String?)
     case kick(channel: String, nick: String, reason: String? = nil)
     case mode(target: String, modes: String)
     case whois(nick: String)
-    case names(channel: String)
+    case names
     case list(channel: String?)
     case quit(reason: String?)
     case nick(newNick: String)
@@ -87,12 +87,8 @@ enum SlashCommand {
     }
 
     private static func parseTopic(_ args: String) -> SlashCommand? {
-        let parts = args.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
-        guard !parts.isEmpty else { return nil }
-
-        let channel = String(parts[0])
-        let newTopic = parts.count > 1 ? String(parts[1]) : nil
-        return .topic(channel: channel, newTopic: newTopic)
+        let newTopic = args.isEmpty ? nil : args
+        return .topic(newTopic: newTopic)
     }
 
     private static func parseKick(_ args: String) -> SlashCommand? {
@@ -121,9 +117,7 @@ enum SlashCommand {
     }
 
     private static func parseNames(_ args: String) -> SlashCommand? {
-        let channel = args.trimmingCharacters(in: .whitespaces)
-        guard !channel.isEmpty else { return nil }
-        return .names(channel: channel)
+        return .names
     }
 
     private static func parseList(_ args: String) -> SlashCommand? {

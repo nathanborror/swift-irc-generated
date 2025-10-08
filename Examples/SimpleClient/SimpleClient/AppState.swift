@@ -128,7 +128,11 @@ class AppState {
                         selected = .console
                     }
 
-                case .topic(let channel, let newTopic):
+                case .topic(let newTopic):
+                    guard let channel = currentChannel else {
+                        print("Error: /topic command requires being in a channel")
+                        return
+                    }
                     if let newTopic = newTopic {
                         try await client.setTopic(channel, topic: newTopic)
                     } else {
@@ -162,7 +166,11 @@ class AppState {
                         print("  Channels: \(result.channels.joined(separator: " "))")
                     }
 
-                case .names(let channel):
+                case .names:
+                    guard let channel = currentChannel else {
+                        print("Error: /names command requires being in a channel")
+                        return
+                    }
                     let result = try await client.names(channel)
                     print("NAMES: \(result.names.count) users in \(channel)")
                     print("  \(result.names.joined(separator: ", "))")
