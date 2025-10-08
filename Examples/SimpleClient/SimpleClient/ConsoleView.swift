@@ -12,35 +12,32 @@ struct ConsoleView: View {
     }
 
     var body: some View {
-        switch state.state {
-        case .connecting:
-            ContentUnavailableView("Connecting...", systemImage: "icloud")
-        case .connected:
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(messages.indices, id: \.self) { index in
-                        Text(messages[index].raw)
-                            .font(.system(size: 11, design: .monospaced))
-                    }
-                }
-                .padding()
-                .toolbar {
-                    ToolbarItem {
-                        Button {
-                            state.join("#general")
-                        } label: {
-                            Label("Join", systemImage: "door.left.hand.open")
+        Group {
+            switch state.state {
+            case .connecting:
+                ContentUnavailableView("Connecting...", systemImage: "icloud")
+            case .connected:
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(messages.indices, id: \.self) { index in
+                            Text(messages[index].raw)
+                                .font(.system(size: 11, design: .monospaced))
                         }
                     }
+                    .padding()
                 }
-            }
-        case .disconnected:
-            VStack {
-                ContentUnavailableView("Disconnected", systemImage: "icloud.slash")
-                Button("Connect") {
+            case .disconnected:
+                VStack {
+                    ContentUnavailableView("Disconnected", systemImage: "icloud.slash")
+                    Button("Connect") {
+                        state.connect()
+                    }
+                }
+                .onAppear {
                     state.connect()
                 }
             }
         }
+        .navigationTitle("Console")
     }
 }

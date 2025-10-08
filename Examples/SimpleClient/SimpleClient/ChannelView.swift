@@ -4,8 +4,8 @@ import SwiftUI
 struct ChannelView: View {
     @Environment(AppState.self) var state
 
-    let target: String
-
+    let channel: AppState.Channel
+    
     @State var text = ""
 
     var messages: [Message] {
@@ -15,35 +15,79 @@ struct ChannelView: View {
                 return message
             }
             .filter {
-                $0.params.first == target
+                $0.params.first == channel.name
             }
     }
 
     var body: some View {
-        VStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(messages.indices, id: \.self) { index in
+        @Bindable var state = state
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(messages.indices, id: \.self) { index in
+                    switch messages[index].command {
+                    case "JOIN":
                         HStack(spacing: 12) {
-                            Text(messages[index].prefix ?? "Unknown")
+                            Text(timestamp(for: messages[index]))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 60, alignment: .trailing)
+                            Text(Image(systemName: "door.left.hand.open"))
                                 .fontWeight(.semibold)
-                                .frame(width: 200, alignment: .trailing)
-                            Text(messages[index].params.last ?? "")
+                                .frame(width: 100, alignment: .trailing)
+                            Text("\(messages[index].nick ?? "") joined")
                         }
-                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                    default:
+                        HStack(spacing: 12) {
+                            Text(timestamp(for: messages[index]))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 60, alignment: .trailing)
+                            Text("\(messages[index].nick ?? "Unknown"):")
+                                .fontWeight(.semibold)
+                                .frame(width: 100, alignment: .trailing)
+                            Text(messages[index].params.last ?? "")
+                            Spacer()
+                            Text(messages[index].command)
+                        }
                     }
                 }
-                .padding()
+
             }
-            TextField("Message", text: $text)
-                .onSubmit {
-                    handleSubmit()
-                }
+            .font(.system(size: 11, design: .monospaced))
+            .padding()
+        }
+        .navigationTitle(channel.name)
+        .safeAreaInset(edge: .bottom) {
+            VStack(alignment: .leading, spacing: 0) {
+                Divider()
+                TextField("Message", text: $text)
+                    .textFieldStyle(.plain)
+                    .padding()
+                    .onSubmit { handleSubmit() }
+            }
         }
     }
 
     func handleSubmit() {
-        state.privmsg(target: target, text: text)
+        state.privmsg(target: channel.name, text: text)
         text = ""
     }
+
+    func timestamp(for message: Message) -> String {
+        if let timeTag = message.tags["time"] {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: timeTag) {
+                return Self.timeFormatter.string(from: date)
+            }
+        }
+
+        // Fall back to current time if no server-time tag
+        return Self.timeFormatter.string(from: Date())
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
 }

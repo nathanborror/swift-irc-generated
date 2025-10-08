@@ -6,14 +6,32 @@ import IRC
 class AppState {
     static let shared = AppState()
 
-    var channels: [String] = []
+    var joined: [String: Channel] = [:]
+    var channels: [String: IRC.ListAggregation.Entry] = [:]
     var events: [IRC.Client.Event] = []
     var state: State = .disconnected
+    var selected: Selection = .console
+
+    var showingInfo = false
+    var showingJoinForm = false
 
     enum State {
         case connecting
         case connected
         case disconnected
+    }
+
+    enum Selection: Hashable {
+        case channel(Channel)
+        case console
+    }
+
+    struct Channel: Identifiable, Hashable {
+        var name: String
+        var members: Set<String> = []
+        var topic: String? = nil
+
+        var id: String { name }
     }
 
     private let client: IRC.Client
@@ -23,9 +41,9 @@ class AppState {
             server: "localhost",
             port: 6697,
             useTLS: true,
-            nick: "swiftbot",
-            username: "swiftbot",
-            realname: "A Swift IRC Bot",
+            nick: "nathan",
+            username: "nathan",
+            realname: "Nathan Borror",
             sasl: nil,
             requestedCaps: [
                 "sasl",
@@ -60,7 +78,10 @@ class AppState {
         Task {
             do {
                 try await client.join(channel)
-                channels.append(channel)
+                let result = try await client.names(channel)
+                let channel = Channel(name: channel, members: Set(result.names))
+                joined[channel.name] = channel
+                selected = .channel(channel)
             } catch {
                 print(error)
             }
@@ -71,6 +92,17 @@ class AppState {
         Task {
             do {
                 try await client.privmsg(target, text)
+            } catch {
+                print(error)
+            }
+        }
+    }
+
+    func list() {
+        Task {
+            do {
+                let results = try await client.list()
+                self.channels = Dictionary(uniqueKeysWithValues: results.entries.map { ($0.channel, $0) })
             } catch {
                 print(error)
             }
@@ -90,43 +122,50 @@ class AppState {
             case .registered:
                 state = .connected
 
-            case .disconnected(let error):
+            case let .disconnected(error):
                 state = .disconnected
                 print("Disconnected reason: \(error?.localizedDescription ?? "Unknown")")
 
-            case .privmsg(let target, let sender, let text, let message):
+            case let .privmsg(target, sender, text, _):
                 messageCount += 1
-                await handleCommands(
-                    target: target, sender: sender, text: text, messageCount: messageCount)
+                await handleCommands(target: target, sender: sender, text: text, messageCount: messageCount)
 
-            case .notice(let target, let sender, let text, let message):
-                print("NOTICE")
+            case let .notice(target, sender, text, _):
+                print("NOTICE: \(target) - \(sender) :\(text)")
 
-            case .join(let channel, let nick, let message):
-                print("JOIN")
+            case let .join(channel, nick, _):
+                channelInsert(nick: nick, channel: channel)
 
-            case .part(let channel, let nick, let reason, let message):
-                print("PART")
+            case let .part(channel, nick, _, _):
+                channelRemove(nick: nick, channel: channel)
 
-            case .quit(let nick, let reason, let message):
-                print("QUIT")
+            case let .quit(nick, _, _):
+                for (key, _) in joined {
+                    channelRemove(nick: nick, channel: key)
+                }
 
-            case .kick(let channel, let kicked, let by, let reason, let message):
-                print("KICK")
+            case let .kick(channel, kicked, _, _, _):
+                channelRemove(nick: kicked, channel: channel)
 
-            case .nick(let oldNick, let newNick, let message):
-                print("NICK")
+            case let .nick(oldNick, newNick, _):
+                for (key, _) in joined {
+                    channelRemove(nick: oldNick, channel: key)
+                    channelInsert(nick: newNick, channel: key)
+                }
 
-            case .topic(let channel, let topic, let message):
-                print("TOPIC")
+            case let .topic(channel, topic, _):
+                if var existing = joined[channel] {
+                    existing.topic = topic
+                    joined[channel] = existing
+                }
 
-            case .mode(let target, let modes, let message):
-                print("MODE")
+            case let .mode(target, modes, _):
+                print("MODE: \(target) - \(modes)")
 
-            case .error(let error):
-                print("Error: \(error)")
+            case let .error(error):
+                print("ERROR: \(error)")
 
-            case .message(let message):
+            case .message:
                 break
             }
         }
@@ -255,6 +294,20 @@ class AppState {
             print("Error handling command '\(command)': \(error)")
             try? await client.privmsg(
                 target, "\(sender): Error executing command: \(error.localizedDescription)")
+        }
+    }
+
+    private func channelInsert(nick: String, channel: String) {
+        if var existing = joined[channel] {
+            existing.members.insert(nick)
+            joined[existing.name] = existing
+        }
+    }
+
+    private func channelRemove(nick: String, channel: String) {
+        if var existing = joined[channel] {
+            existing.members.remove(nick)
+            joined[existing.name] = existing
         }
     }
 }
