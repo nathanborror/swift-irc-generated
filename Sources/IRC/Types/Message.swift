@@ -193,6 +193,14 @@ extension Message {
         guard let code = numericCode else { return nil }
         return NumericReply.name(for: code)
     }
+
+    /// Parses and returns the timestamp from the IRCv3 'time' tag if available
+    public var timestamp: Date? {
+        guard let timeTag = tags["time"] else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: timeTag)
+    }
 }
 
 // MARK: - Numeric Reply Codes

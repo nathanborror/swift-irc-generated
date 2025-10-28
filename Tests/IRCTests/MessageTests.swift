@@ -126,6 +126,27 @@ final class MessageTests: XCTestCase {
         XCTAssertEqual(msg.tags["key"], "value;with semicolon and space")
     }
 
+    func testTimestampProperty() {
+        // Test with valid time tag
+        let msg = Message.parse("@time=2024-01-15T10:30:00.000Z PRIVMSG #channel :Hello")
+
+        XCTAssertNotNil(msg.timestamp)
+
+        // Verify the date is correctly parsed
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let expectedDate = formatter.date(from: "2024-01-15T10:30:00.000Z")
+        XCTAssertEqual(msg.timestamp, expectedDate)
+
+        // Test without time tag
+        let msgNoTime = Message.parse("PRIVMSG #channel :Hello")
+        XCTAssertNil(msgNoTime.timestamp)
+
+        // Test with invalid time format
+        let msgInvalidTime = Message.parse("@time=invalid PRIVMSG #channel :Hello")
+        XCTAssertNil(msgInvalidTime.timestamp)
+    }
+
     // MARK: - Numeric Replies
 
     func testNumericReply() {
