@@ -162,6 +162,38 @@ config.sasl = .plain(
 config.sasl = .external
 ```
 
+### Registered Nick Handling
+
+When using SASL authentication with a registered nickname, the client automatically delays sending the `NICK` and `USER` commands until after SASL authentication completes. This ensures you can claim your registered nickname without getting a "nick in use" error.
+
+**How it works:**
+
+1. **Without SASL**: `NICK` and `USER` are sent immediately during handshake
+2. **With SASL**: `NICK` and `USER` are delayed until SASL authentication succeeds (code 903)
+3. **Fallback**: If SASL fails or nick is still in use, the client appends `_` and retries
+
+**Example:**
+```swift
+let config = Client.Config(
+    server: "irc.libera.chat",
+    port: 6697,
+    useTLS: true,
+    nick: "mybot",                    // Your registered nick
+    sasl: .plain(
+        username: "mybot",
+        password: "your-password"
+    ),
+    requestedCaps: ["sasl", ...]      // Must include "sasl"
+)
+
+let client = Client(config: config)
+try await client.connect()
+await client.awaitRegistered()
+// You're now connected with your registered nick "mybot"
+```
+
+See [REGISTERED_NICKS.md](REGISTERED_NICKS.md) for detailed documentation.
+
 ## Commands
 
 ### Basic Commands

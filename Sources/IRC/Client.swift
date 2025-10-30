@@ -248,9 +248,16 @@ public actor Client {
                 try await send(.pass(password))
             }
 
-            // Send NICK and USER
-            try await send(.nick(config.nick))
-            try await send(.user(username: config.username, realname: config.realname))
+            // For registered nicks with SASL, delay NICK/USER until SASL negotiation starts
+            // This allows authentication to complete before claiming the nick
+            let usingSASL = config.sasl != nil && config.requestedCaps.contains("sasl")
+
+            if !usingSASL {
+                // Send NICK and USER immediately if not using SASL
+                try await send(.nick(config.nick))
+                try await send(.user(username: config.username, realname: config.realname))
+            }
+            // If using SASL, NICK/USER will be sent after CAP ACK in handleCAP
 
             // If we're not doing CAP negotiation, we're done with our part
             if config.requestedCaps.isEmpty {
@@ -588,6 +595,14 @@ public actor Client {
                 switch code {
                 case 903:  // RPL_SASLSUCCESS
                     saslAuthenticated = true
+
+                    // If we haven't sent NICK/USER yet (waiting for SASL for registered nick),
+                    // send them now that we're authenticated
+                    if currentNick.isEmpty {
+                        try? await send(.nick(config.nick))
+                        try? await send(.user(username: config.username, realname: config.realname))
+                    }
+
                     if capNegotiationComplete {
                         try? await sendRaw("CAP END")
                     }
@@ -595,6 +610,14 @@ public actor Client {
                 case 904, 905, 906:  // SASL failures
                     eventsContinuation.yield(.error("SASL authentication failed: \(message.raw)"))
                     saslAuthenticated = false
+
+                    // If we haven't sent NICK/USER yet (waiting for SASL), send them now
+                    // so we can continue registration even though SASL failed
+                    if currentNick.isEmpty {
+                        try? await send(.nick(config.nick))
+                        try? await send(.user(username: config.username, realname: config.realname))
+                    }
+
                     try? await sendRaw("CAP END")
 
                 default:
@@ -655,6 +678,14 @@ public actor Client {
                     }
                 } else {
                     capNegotiationComplete = true
+
+                    // If we haven't sent NICK/USER yet (because we were waiting for SASL),
+                    // send them now before CAP END
+                    if currentNick.isEmpty {
+                        try? await send(.nick(config.nick))
+                        try? await send(.user(username: config.username, realname: config.realname))
+                    }
+
                     try? await sendRaw("CAP END")
                 }
             }
@@ -662,6 +693,13 @@ public actor Client {
         case "NAK":
             // Server rejected our capability request
             capNegotiationComplete = true
+
+            // If we haven't sent NICK/USER yet (waiting for SASL), send them now
+            if currentNick.isEmpty {
+                try? await send(.nick(config.nick))
+                try? await send(.user(username: config.username, realname: config.realname))
+            }
+
             try? await sendRaw("CAP END")
 
         default:
