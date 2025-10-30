@@ -190,7 +190,7 @@ public actor Client {
         if state == .registered {
             try await send(.quit(reason))
             // Give it a moment to send
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            try? await Task.sleep(for: .milliseconds(500))
         }
 
         await cleanup()
@@ -469,7 +469,7 @@ public actor Client {
                     return
                 }
             } else {
-                try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+                try? await Task.sleep(for: .milliseconds(10))
             }
         }
     }

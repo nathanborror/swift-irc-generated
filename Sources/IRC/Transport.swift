@@ -259,6 +259,7 @@ public actor MockTransport: Transport {
     private var readLines: [String] = []
     private var writtenLines: [String] = []
     private var isOpen = false
+    private var pendingReadContinuation: CheckedContinuation<String?, Error>?
 
     public init() {}
 
@@ -268,12 +269,16 @@ public actor MockTransport: Transport {
 
     public func readLine() async throws -> String? {
         guard isOpen else { throw TransportError.notConnected }
-        guard !readLines.isEmpty else {
-            // Simulate waiting for data
-            try await Task.sleep(nanoseconds: 100_000_000)
-            return nil
+
+        // If we have data ready, return it immediately
+        if !readLines.isEmpty {
+            return readLines.removeFirst()
         }
-        return readLines.removeFirst()
+
+        // Otherwise, suspend until data arrives
+        return try await withCheckedThrowingContinuation { continuation in
+            pendingReadContinuation = continuation
+        }
     }
 
     public func writeLine(_ line: String) async throws {
@@ -285,11 +290,24 @@ public actor MockTransport: Transport {
     public func close() async throws {
         isOpen = false
         readLines.removeAll()
+
+        // Resume any pending read with nil to signal connection closed
+        if let continuation = pendingReadContinuation {
+            pendingReadContinuation = nil
+            continuation.resume(returning: nil)
+        }
     }
 
     // Test helpers
     public func queueRead(_ line: String) {
         readLines.append(line)
+
+        // If there's a pending read, resume it with the first queued line
+        if let continuation = pendingReadContinuation, !readLines.isEmpty {
+            pendingReadContinuation = nil
+            let nextLine = readLines.removeFirst()
+            continuation.resume(returning: nextLine)
+        }
     }
 
     public func getWrittenLines() -> [String] {
