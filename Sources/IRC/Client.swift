@@ -641,7 +641,10 @@ public actor Client {
         case "LS":
             // Server listing available capabilities
             if let capsString = message.params.last {
-                let caps = capsString.split(separator: " ").map(String.init)
+                let caps = capsString.split(separator: " ").map { capString in
+                    // Strip capability values (e.g., "sasl=PLAIN,EXTERNAL" -> "sasl")
+                    String(capString.split(separator: "=").first ?? capString)
+                }
                 availableCaps.formUnion(caps)
 
                 // Check if this is multiline (has * as param 2)
@@ -662,7 +665,10 @@ public actor Client {
         case "ACK":
             // Server acknowledged our capability request
             if let capsString = message.params.last {
-                let caps = capsString.split(separator: " ").map(String.init)
+                let caps = capsString.split(separator: " ").map { capString in
+                    // Strip capability values (e.g., "sasl=PLAIN,EXTERNAL" -> "sasl")
+                    String(capString.split(separator: "=").first ?? capString)
+                }
                 enabledCaps.formUnion(caps)
 
                 // If we got SASL, authenticate

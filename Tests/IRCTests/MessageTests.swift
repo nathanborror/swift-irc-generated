@@ -369,6 +369,16 @@ final class MessageTests: XCTestCase {
         XCTAssertEqual(msg.params[2], "*")  // Multiline indicator
     }
 
+    func testCAPLSWithValues() {
+        let msg = Message.parse(
+            ":server CAP * LS :multi-prefix sasl=PLAIN,EXTERNAL,SCRAM-SHA-256 account-notify")
+
+        XCTAssertEqual(msg.command, "CAP")
+        XCTAssertEqual(msg.params[0], "*")
+        XCTAssertEqual(msg.params[1], "LS")
+        XCTAssertTrue(msg.text?.contains("sasl=") ?? false)
+    }
+
     func testSASLSuccess() {
         let msg = Message.parse(":server 903 nick :SASL authentication successful")
 
