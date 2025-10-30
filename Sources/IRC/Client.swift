@@ -595,6 +595,7 @@ public actor Client {
                 switch code {
                 case 903:  // RPL_SASLSUCCESS
                     saslAuthenticated = true
+                    capNegotiationComplete = true
 
                     // If we haven't sent NICK/USER yet (waiting for SASL for registered nick),
                     // send them now that we're authenticated
@@ -603,9 +604,7 @@ public actor Client {
                         try? await send(.user(username: config.username, realname: config.realname))
                     }
 
-                    if capNegotiationComplete {
-                        try? await sendRaw("CAP END")
-                    }
+                    try? await sendRaw("CAP END")
 
                 case 904, 905, 906:  // SASL failures
                     eventsContinuation.yield(.error("SASL authentication failed: \(message.raw)"))
