@@ -1,374 +1,442 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import IRC
 
-final class CommandTests: XCTestCase {
+@Suite("Command Tests")
+struct CommandTests {
 
     // MARK: - Connection Registration
 
-    func testPassCommand() {
+    @Test("PASS command encoding")
+    func passCommand() {
         let cmd = Command.pass("secret123")
-        XCTAssertEqual(cmd.encode(), "PASS secret123")
+        #expect(cmd.encode() == "PASS secret123")
     }
 
-    func testNickCommand() {
+    @Test("NICK command encoding")
+    func nickCommand() {
         let cmd = Command.nick("TestBot")
-        XCTAssertEqual(cmd.encode(), "NICK TestBot")
+        #expect(cmd.encode() == "NICK TestBot")
     }
 
-    func testUserCommand() {
+    @Test("USER command encoding")
+    func userCommand() {
         let cmd = Command.user(username: "testuser", mode: 0, realname: "Test User")
-        XCTAssertEqual(cmd.encode(), "USER testuser 0 * :Test User")
+        #expect(cmd.encode() == "USER testuser 0 * :Test User")
     }
 
-    func testUserCommandWithMode() {
+    @Test("USER command with mode encoding")
+    func userCommandWithMode() {
         let cmd = Command.user(username: "testuser", mode: 8, realname: "Test User")
-        XCTAssertEqual(cmd.encode(), "USER testuser 8 * :Test User")
+        #expect(cmd.encode() == "USER testuser 8 * :Test User")
     }
 
-    func testQuitWithoutMessage() {
+    @Test("QUIT without message")
+    func quitWithoutMessage() {
         let cmd = Command.quit()
-        XCTAssertEqual(cmd.encode(), "QUIT")
+        #expect(cmd.encode() == "QUIT")
     }
 
-    func testQuitWithMessage() {
+    @Test("QUIT with message")
+    func quitWithMessage() {
         let cmd = Command.quit("Goodbye!")
-        XCTAssertEqual(cmd.encode(), "QUIT :Goodbye!")
+        #expect(cmd.encode() == "QUIT :Goodbye!")
     }
 
     // MARK: - CAP Negotiation
 
-    func testCapLS() {
+    @Test("CAP LS encoding")
+    func capLS() {
         let cmd = Command.cap("LS", ["302"])
-        XCTAssertEqual(cmd.encode(), "CAP LS :302")
+        #expect(cmd.encode() == "CAP LS :302")
     }
 
-    func testCapREQ() {
+    @Test("CAP REQ encoding")
+    func capREQ() {
         let cmd = Command.cap("REQ", ["sasl", "multi-prefix"])
-        XCTAssertEqual(cmd.encode(), "CAP REQ :sasl multi-prefix")
+        #expect(cmd.encode() == "CAP REQ :sasl multi-prefix")
     }
 
-    func testCapWithoutArgs() {
+    @Test("CAP without args")
+    func capWithoutArgs() {
         let cmd = Command.cap("LIST")
-        XCTAssertEqual(cmd.encode(), "CAP LIST")
+        #expect(cmd.encode() == "CAP LIST")
     }
 
-    func testCapEnd() {
+    @Test("CAP END encoding")
+    func capEnd() {
         let cmd = Command.capEnd
-        XCTAssertEqual(cmd.encode(), "CAP END")
+        #expect(cmd.encode() == "CAP END")
     }
 
     // MARK: - SASL Authentication
 
-    func testAuthenticateCommand() {
+    @Test("AUTHENTICATE command")
+    func authenticateCommand() {
         let cmd = Command.authenticate("PLAIN")
-        XCTAssertEqual(cmd.encode(), "AUTHENTICATE PLAIN")
+        #expect(cmd.encode() == "AUTHENTICATE PLAIN")
     }
 
-    func testAuthenticateBase64() {
+    @Test("AUTHENTICATE with base64")
+    func authenticateBase64() {
         let cmd = Command.authenticate("dGVzdAB0ZXN0AHBhc3N3b3Jk")
-        XCTAssertEqual(cmd.encode(), "AUTHENTICATE dGVzdAB0ZXN0AHBhc3N3b3Jk")
+        #expect(cmd.encode() == "AUTHENTICATE dGVzdAB0ZXN0AHBhc3N3b3Jk")
     }
 
-    func testAuthPlainHelper() {
+    @Test("AUTH PLAIN helper")
+    func authPlainHelper() {
         let cmd = Command.authPlain(username: "testuser", password: "testpass")
         let encoded = cmd.encode()
 
-        XCTAssertTrue(encoded.hasPrefix("AUTHENTICATE "))
+        #expect(encoded.hasPrefix("AUTHENTICATE "))
 
         // Verify base64 encoding
         let base64Part = encoded.dropFirst("AUTHENTICATE ".count)
         if let decoded = Data(base64Encoded: String(base64Part)),
             let decodedString = String(data: decoded, encoding: .utf8)
         {
-            XCTAssertEqual(decodedString, "\0testuser\0testpass")
+            #expect(decodedString == "\0testuser\0testpass")
         } else {
-            XCTFail("Failed to decode SASL PLAIN")
+            Issue.record("Failed to decode SASL PLAIN")
         }
     }
 
     // MARK: - Channel Operations
 
-    func testJoinChannel() {
+    @Test("JOIN channel")
+    func joinChannel() {
         let cmd = Command.join("#test")
-        XCTAssertEqual(cmd.encode(), "JOIN #test")
+        #expect(cmd.encode() == "JOIN #test")
     }
 
-    func testJoinChannelWithKey() {
+    @Test("JOIN channel with key")
+    func joinChannelWithKey() {
         let cmd = Command.join("#private", key: "secret")
-        XCTAssertEqual(cmd.encode(), "JOIN #private secret")
+        #expect(cmd.encode() == "JOIN #private secret")
     }
 
-    func testPartChannel() {
+    @Test("PART channel")
+    func partChannel() {
         let cmd = Command.part("#test")
-        XCTAssertEqual(cmd.encode(), "PART #test")
+        #expect(cmd.encode() == "PART #test")
     }
 
-    func testPartChannelWithReason() {
+    @Test("PART channel with reason")
+    func partChannelWithReason() {
         let cmd = Command.part("#test", reason: "Going away")
-        XCTAssertEqual(cmd.encode(), "PART #test :Going away")
+        #expect(cmd.encode() == "PART #test :Going away")
     }
 
-    func testTopicGet() {
+    @Test("TOPIC get")
+    func topicGet() {
         let cmd = Command.topic("#test")
-        XCTAssertEqual(cmd.encode(), "TOPIC #test")
+        #expect(cmd.encode() == "TOPIC #test")
     }
 
-    func testTopicSet() {
+    @Test("TOPIC set")
+    func topicSet() {
         let cmd = Command.topic("#test", newTopic: "New channel topic")
-        XCTAssertEqual(cmd.encode(), "TOPIC #test :New channel topic")
+        #expect(cmd.encode() == "TOPIC #test :New channel topic")
     }
 
-    func testNamesChannel() {
+    @Test("NAMES channel")
+    func namesChannel() {
         let cmd = Command.names("#test")
-        XCTAssertEqual(cmd.encode(), "NAMES #test")
+        #expect(cmd.encode() == "NAMES #test")
     }
 
-    func testListAll() {
+    @Test("LIST all channels")
+    func listAll() {
         let cmd = Command.list()
-        XCTAssertEqual(cmd.encode(), "LIST")
+        #expect(cmd.encode() == "LIST")
     }
 
-    func testListSpecific() {
+    @Test("LIST specific channel")
+    func listSpecific() {
         let cmd = Command.list("#test")
-        XCTAssertEqual(cmd.encode(), "LIST #test")
+        #expect(cmd.encode() == "LIST #test")
     }
 
-    func testInvite() {
+    @Test("INVITE user to channel")
+    func invite() {
         let cmd = Command.invite(nick: "friend", channel: "#private")
-        XCTAssertEqual(cmd.encode(), "INVITE friend #private")
+        #expect(cmd.encode() == "INVITE friend #private")
     }
 
-    func testKickWithoutReason() {
+    @Test("KICK without reason")
+    func kickWithoutReason() {
         let cmd = Command.kick(channel: "#test", nick: "baduser")
-        XCTAssertEqual(cmd.encode(), "KICK #test baduser")
+        #expect(cmd.encode() == "KICK #test baduser")
     }
 
-    func testKickWithReason() {
+    @Test("KICK with reason")
+    func kickWithReason() {
         let cmd = Command.kick(channel: "#test", nick: "baduser", reason: "Spam")
-        XCTAssertEqual(cmd.encode(), "KICK #test baduser :Spam")
+        #expect(cmd.encode() == "KICK #test baduser :Spam")
     }
 
     // MARK: - Messaging
 
-    func testPrivmsg() {
+    @Test("PRIVMSG to channel")
+    func privmsg() {
         let cmd = Command.privmsg("#channel", "Hello, world!")
-        XCTAssertEqual(cmd.encode(), "PRIVMSG #channel :Hello, world!")
+        #expect(cmd.encode() == "PRIVMSG #channel :Hello, world!")
     }
 
-    func testPrivmsgPrivate() {
+    @Test("PRIVMSG to user")
+    func privmsgPrivate() {
         let cmd = Command.privmsg("user", "Private message")
-        XCTAssertEqual(cmd.encode(), "PRIVMSG user :Private message")
+        #expect(cmd.encode() == "PRIVMSG user :Private message")
     }
 
-    func testNotice() {
+    @Test("NOTICE encoding")
+    func notice() {
         let cmd = Command.notice("#channel", "Notice message")
-        XCTAssertEqual(cmd.encode(), "NOTICE #channel :Notice message")
+        #expect(cmd.encode() == "NOTICE #channel :Notice message")
     }
 
-    func testPrivmsgWithSpecialCharacters() {
+    @Test("PRIVMSG with special characters")
+    func privmsgWithSpecialCharacters() {
         let cmd = Command.privmsg("#test", "Message with émojis 🎉 and unicode ñ")
-        XCTAssertEqual(cmd.encode(), "PRIVMSG #test :Message with émojis 🎉 and unicode ñ")
+        #expect(cmd.encode() == "PRIVMSG #test :Message with émojis 🎉 and unicode ñ")
     }
 
     // MARK: - Modes
 
-    func testModeGet() {
+    @Test("MODE get")
+    func modeGet() {
         let cmd = Command.mode(target: "#channel")
-        XCTAssertEqual(cmd.encode(), "MODE #channel")
+        #expect(cmd.encode() == "MODE #channel")
     }
 
-    func testModeSet() {
+    @Test("MODE set")
+    func modeSet() {
         let cmd = Command.mode(target: "#channel", modes: "+m")
-        XCTAssertEqual(cmd.encode(), "MODE #channel +m")
+        #expect(cmd.encode() == "MODE #channel +m")
     }
 
-    func testModeSetWithArgs() {
+    @Test("MODE set with args")
+    func modeSetWithArgs() {
         let cmd = Command.mode(target: "#channel", modes: "+o nick")
-        XCTAssertEqual(cmd.encode(), "MODE #channel +o nick")
+        #expect(cmd.encode() == "MODE #channel +o nick")
     }
 
-    func testUserMode() {
+    @Test("User MODE")
+    func userMode() {
         let cmd = Command.mode(target: "MyNick", modes: "+i")
-        XCTAssertEqual(cmd.encode(), "MODE MyNick +i")
+        #expect(cmd.encode() == "MODE MyNick +i")
     }
 
     // MARK: - User Queries
 
-    func testWhois() {
+    @Test("WHOIS query")
+    func whois() {
         let cmd = Command.whois("targetuser")
-        XCTAssertEqual(cmd.encode(), "WHOIS targetuser")
+        #expect(cmd.encode() == "WHOIS targetuser")
     }
 
-    func testWhowas() {
+    @Test("WHOWAS query")
+    func whowas() {
         let cmd = Command.whowas("olduser")
-        XCTAssertEqual(cmd.encode(), "WHOWAS olduser")
+        #expect(cmd.encode() == "WHOWAS olduser")
     }
 
-    func testWhowasWithCount() {
+    @Test("WHOWAS with count")
+    func whowasWithCount() {
         let cmd = Command.whowas("olduser", count: 5)
-        XCTAssertEqual(cmd.encode(), "WHOWAS olduser 5")
+        #expect(cmd.encode() == "WHOWAS olduser 5")
     }
 
-    func testWho() {
+    @Test("WHO query")
+    func who() {
         let cmd = Command.who("#channel")
-        XCTAssertEqual(cmd.encode(), "WHO #channel")
+        #expect(cmd.encode() == "WHO #channel")
     }
 
-    func testWhoOpOnly() {
+    @Test("WHO with operator only filter")
+    func whoOpOnly() {
         let cmd = Command.who("#channel", opOnly: true)
-        XCTAssertEqual(cmd.encode(), "WHO #channel o")
+        #expect(cmd.encode() == "WHO #channel o")
     }
 
-    func testIson() {
+    @Test("ISON query")
+    func ison() {
         let cmd = Command.ison(["user1", "user2", "user3"])
-        XCTAssertEqual(cmd.encode(), "ISON user1 user2 user3")
+        #expect(cmd.encode() == "ISON user1 user2 user3")
     }
 
-    func testUserhostSingle() {
+    @Test("USERHOST single user")
+    func userhostSingle() {
         let cmd = Command.userhost(["user1"])
-        XCTAssertEqual(cmd.encode(), "USERHOST user1")
+        #expect(cmd.encode() == "USERHOST user1")
     }
 
-    func testUserhostMultiple() {
+    @Test("USERHOST multiple users")
+    func userhostMultiple() {
         let cmd = Command.userhost(["user1", "user2"])
-        XCTAssertEqual(cmd.encode(), "USERHOST user1 user2")
+        #expect(cmd.encode() == "USERHOST user1 user2")
     }
 
     // MARK: - Server Queries
 
-    func testPing() {
+    @Test("PING command")
+    func ping() {
         let cmd = Command.ping("server.name")
-        XCTAssertEqual(cmd.encode(), "PING :server.name")
+        #expect(cmd.encode() == "PING :server.name")
     }
 
-    func testPong() {
+    @Test("PONG command")
+    func pong() {
         let cmd = Command.pong("server.name")
-        XCTAssertEqual(cmd.encode(), "PONG :server.name")
+        #expect(cmd.encode() == "PONG :server.name")
     }
 
-    func testMotd() {
+    @Test("MOTD default")
+    func motd() {
         let cmd = Command.motd()
-        XCTAssertEqual(cmd.encode(), "MOTD")
+        #expect(cmd.encode() == "MOTD")
     }
 
-    func testMotdServer() {
+    @Test("MOTD for server")
+    func motdServer() {
         let cmd = Command.motd("server.name")
-        XCTAssertEqual(cmd.encode(), "MOTD server.name")
+        #expect(cmd.encode() == "MOTD server.name")
     }
 
-    func testVersion() {
+    @Test("VERSION default")
+    func version() {
         let cmd = Command.version()
-        XCTAssertEqual(cmd.encode(), "VERSION")
+        #expect(cmd.encode() == "VERSION")
     }
 
-    func testVersionServer() {
+    @Test("VERSION for server")
+    func versionServer() {
         let cmd = Command.version("server.name")
-        XCTAssertEqual(cmd.encode(), "VERSION server.name")
+        #expect(cmd.encode() == "VERSION server.name")
     }
 
-    func testTime() {
+    @Test("TIME default")
+    func time() {
         let cmd = Command.time()
-        XCTAssertEqual(cmd.encode(), "TIME")
+        #expect(cmd.encode() == "TIME")
     }
 
-    func testTimeServer() {
+    @Test("TIME for server")
+    func timeServer() {
         let cmd = Command.time("server.name")
-        XCTAssertEqual(cmd.encode(), "TIME server.name")
+        #expect(cmd.encode() == "TIME server.name")
     }
 
-    func testAdmin() {
+    @Test("ADMIN default")
+    func admin() {
         let cmd = Command.admin()
-        XCTAssertEqual(cmd.encode(), "ADMIN")
+        #expect(cmd.encode() == "ADMIN")
     }
 
-    func testAdminServer() {
+    @Test("ADMIN for server")
+    func adminServer() {
         let cmd = Command.admin("server.name")
-        XCTAssertEqual(cmd.encode(), "ADMIN server.name")
+        #expect(cmd.encode() == "ADMIN server.name")
     }
 
-    func testInfo() {
+    @Test("INFO default")
+    func info() {
         let cmd = Command.info()
-        XCTAssertEqual(cmd.encode(), "INFO")
+        #expect(cmd.encode() == "INFO")
     }
 
-    func testInfoServer() {
+    @Test("INFO for server")
+    func infoServer() {
         let cmd = Command.info("server.name")
-        XCTAssertEqual(cmd.encode(), "INFO server.name")
+        #expect(cmd.encode() == "INFO server.name")
     }
 
-    func testStats() {
+    @Test("STATS default")
+    func stats() {
         let cmd = Command.stats()
-        XCTAssertEqual(cmd.encode(), "STATS")
+        #expect(cmd.encode() == "STATS")
     }
 
-    func testStatsQuery() {
+    @Test("STATS with query")
+    func statsQuery() {
         let cmd = Command.stats(query: "u")
-        XCTAssertEqual(cmd.encode(), "STATS u")
+        #expect(cmd.encode() == "STATS u")
     }
 
-    func testStatsQueryServer() {
+    @Test("STATS with query and server")
+    func statsQueryServer() {
         let cmd = Command.stats(query: "u", server: "server.name")
-        XCTAssertEqual(cmd.encode(), "STATS u server.name")
+        #expect(cmd.encode() == "STATS u server.name")
     }
 
     // MARK: - User State
 
-    func testAwaySet() {
+    @Test("AWAY set message")
+    func awaySet() {
         let cmd = Command.away("Be right back")
-        XCTAssertEqual(cmd.encode(), "AWAY :Be right back")
+        #expect(cmd.encode() == "AWAY :Be right back")
     }
 
-    func testAwayClear() {
+    @Test("AWAY clear")
+    func awayClear() {
         let cmd = Command.away()
-        XCTAssertEqual(cmd.encode(), "AWAY")
+        #expect(cmd.encode() == "AWAY")
     }
 
     // MARK: - Raw Command
 
-    func testRawCommand() {
+    @Test("Raw command encoding")
+    func rawCommand() {
         let cmd = Command.raw("CUSTOM command with args :and trailing")
-        XCTAssertEqual(cmd.encode(), "CUSTOM command with args :and trailing")
+        #expect(cmd.encode() == "CUSTOM command with args :and trailing")
     }
 
-    func testRawCommandPreservesFormatting() {
+    @Test("Raw command preserves formatting")
+    func rawCommandPreservesFormatting() {
         let cmd = Command.raw("MODE #channel +b *!*@*.example.com")
-        XCTAssertEqual(cmd.encode(), "MODE #channel +b *!*@*.example.com")
+        #expect(cmd.encode() == "MODE #channel +b *!*@*.example.com")
     }
 
     // MARK: - Edge Cases
 
-    func testEmptyTrailingParameter() {
+    @Test("Empty trailing parameter")
+    func emptyTrailingParameter() {
         let cmd = Command.privmsg("#channel", "")
-        XCTAssertEqual(cmd.encode(), "PRIVMSG #channel :")
+        #expect(cmd.encode() == "PRIVMSG #channel :")
     }
 
-    func testMessageWithColons() {
+    @Test("Message with colons")
+    func messageWithColons() {
         let cmd = Command.privmsg("#channel", "Time is 12:30:45")
-        XCTAssertEqual(cmd.encode(), "PRIVMSG #channel :Time is 12:30:45")
+        #expect(cmd.encode() == "PRIVMSG #channel :Time is 12:30:45")
     }
 
-    func testMessageWithNewlines() {
+    @Test("Message with newlines")
+    func messageWithNewlines() {
         let cmd = Command.privmsg("#channel", "Line 1\nLine 2")
         // IRC doesn't support multiline messages, but we encode as-is
-        XCTAssertEqual(cmd.encode(), "PRIVMSG #channel :Line 1\nLine 2")
+        #expect(cmd.encode() == "PRIVMSG #channel :Line 1\nLine 2")
     }
 
-    func testChannelNameVariations() {
-        XCTAssertEqual(Command.join("#test").encode(), "JOIN #test")
-        XCTAssertEqual(Command.join("&local").encode(), "JOIN &local")
-        XCTAssertEqual(Command.join("!12345").encode(), "JOIN !12345")
-        XCTAssertEqual(Command.join("+modeless").encode(), "JOIN +modeless")
+    @Test("Channel name variations")
+    func channelNameVariations() {
+        #expect(Command.join("#test").encode() == "JOIN #test")
+        #expect(Command.join("&local").encode() == "JOIN &local")
+        #expect(Command.join("!12345").encode() == "JOIN !12345")
+        #expect(Command.join("+modeless").encode() == "JOIN +modeless")
     }
 
-    func testNickWithSpecialCharacters() {
+    @Test("Nick with special characters")
+    func nickWithSpecialCharacters() {
         let cmd = Command.nick("Test[Bot]")
-        XCTAssertEqual(cmd.encode(), "NICK Test[Bot]")
+        #expect(cmd.encode() == "NICK Test[Bot]")
     }
 
-    func testLongMessage() {
+    @Test("Long message encoding")
+    func longMessage() {
         let longText = String(repeating: "a", count: 400)
         let cmd = Command.privmsg("#channel", longText)
-        XCTAssertEqual(cmd.encode(), "PRIVMSG #channel :\(longText)")
+        #expect(cmd.encode() == "PRIVMSG #channel :\(longText)")
     }
 }
