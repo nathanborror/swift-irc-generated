@@ -115,6 +115,7 @@ public actor Client {
     private var enabledCaps: Set<String> = []
     private var capNegotiationComplete = false
     private var saslAuthenticated = false
+    private var nickUserSent = false
 
     // Rate limiting
     private var rateLimitTokens: Int
@@ -209,6 +210,7 @@ public actor Client {
         state = .disconnected
         capNegotiationComplete = false
         saslAuthenticated = false
+        nickUserSent = false
         availableCaps.removeAll()
         enabledCaps.removeAll()
         writeQueue.removeAll()
@@ -256,6 +258,7 @@ public actor Client {
                 // Send NICK and USER immediately if not using SASL
                 try await send(.nick(config.nick))
                 try await send(.user(username: config.username, realname: config.realname))
+                nickUserSent = true
             }
             // If using SASL, NICK/USER will be sent after CAP ACK in handleCAP
 
@@ -599,9 +602,10 @@ public actor Client {
 
                     // If we haven't sent NICK/USER yet (waiting for SASL for registered nick),
                     // send them now that we're authenticated
-                    if currentNick.isEmpty {
+                    if !nickUserSent {
                         try? await send(.nick(config.nick))
                         try? await send(.user(username: config.username, realname: config.realname))
+                        nickUserSent = true
                     }
 
                     try? await sendRaw("CAP END")
@@ -612,9 +616,10 @@ public actor Client {
 
                     // If we haven't sent NICK/USER yet (waiting for SASL), send them now
                     // so we can continue registration even though SASL failed
-                    if currentNick.isEmpty {
+                    if !nickUserSent {
                         try? await send(.nick(config.nick))
                         try? await send(.user(username: config.username, realname: config.realname))
+                        nickUserSent = true
                     }
 
                     try? await sendRaw("CAP END")
@@ -686,9 +691,10 @@ public actor Client {
 
                     // If we haven't sent NICK/USER yet (because we were waiting for SASL),
                     // send them now before CAP END
-                    if currentNick.isEmpty {
+                    if !nickUserSent {
                         try? await send(.nick(config.nick))
                         try? await send(.user(username: config.username, realname: config.realname))
+                        nickUserSent = true
                     }
 
                     try? await sendRaw("CAP END")
@@ -700,9 +706,10 @@ public actor Client {
             capNegotiationComplete = true
 
             // If we haven't sent NICK/USER yet (waiting for SASL), send them now
-            if currentNick.isEmpty {
+            if !nickUserSent {
                 try? await send(.nick(config.nick))
                 try? await send(.user(username: config.username, realname: config.realname))
+                nickUserSent = true
             }
 
             try? await sendRaw("CAP END")
