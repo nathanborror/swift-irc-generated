@@ -36,7 +36,7 @@ public enum Command: Sendable {
     // User Queries
     case whois(String)
     case whowas(String, count: Int? = nil)
-    case who(String, opOnly: Bool = false)
+    case who(String, fields: String? = nil, opOnly: Bool = false)
     case ison([String])
     case userhost([String])
 
@@ -147,11 +147,15 @@ extension Command {
             }
             return "WHOWAS \(nick)"
 
-        case .who(let mask, let opOnly):
-            if opOnly {
-                return "WHO \(mask) o"
+        case .who(let mask, let fields, let opOnly):
+            var cmd = "WHO \(mask)"
+            if let fields {
+                cmd += " %t\(fields)"
             }
-            return "WHO \(mask)"
+            if opOnly {
+                cmd += " o"
+            }
+            return cmd
 
         case .ison(let nicks):
             return "ISON \(nicks.joined(separator: " "))"
