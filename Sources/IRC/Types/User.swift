@@ -8,15 +8,8 @@ public struct User: Identifiable, Sendable {
     public var account: String?
     public var server: String?
     public var idleSeconds: Int?
-    public var channel: String?
-    public var prefixes: Set<Prefix>
 
-    public var id: String {
-        if let channel = channel {
-            return "\(channel):\(nick)"
-        }
-        return nick
-    }
+    public var id: String { nick }
     public var isAuthenticated: Bool { account != nil }
 
     public enum Prefix: String, Sendable {
@@ -35,26 +28,33 @@ public struct User: Identifiable, Sendable {
         self.account = nil
         self.server = nil
         self.idleSeconds = nil
-        self.channel = nil
-        self.prefixes = []
     }
 
+    /// Result from applying a WHO/WHOX message, containing channel context and prefixes
+    public struct WhoResult: Sendable {
+        public let channel: String?
+        public let prefixes: Set<Prefix>
+    }
+
+    /// Applies an IRC message to update user info
+    /// Returns WhoResult with channel context and prefixes for WHO/WHOX replies, nil otherwise
     @discardableResult
-    public mutating func apply(_ message: Message) -> Bool {
+    public mutating func apply(_ message: Message) -> WhoResult? {
         switch message.command {
         case "352": // WHO reply: 352 <client> <channel> <user> <host> <server> <nick> <flags> :<hopcount> <realname>
             guard message.params.count >= 8 else {
-                return false
+                return nil
             }
             self.nick = message.params[5]
             self.username = message.params[2]
             self.hostname = message.params[3]
             self.server = message.params[4]
-            self.channel = message.params[1]
+
+            let channel = message.params[1]
 
             // Parse flags (format: H/G + * (ircop) + channel prefixes like @, +, %, ~, &)
             let flags = message.params[6]
-            self.prefixes = Self.parsePrefixes(from: flags)
+            let prefixes = Self.parsePrefixes(from: flags)
 
             // Parse realname from trailing parameter (format: "<hopcount> <realname>")
             let trailing = message.params[7]
@@ -66,11 +66,12 @@ public struct User: Identifiable, Sendable {
 
             self.account = nil
             self.idleSeconds = nil
-            return true
+            return WhoResult(channel: channel, prefixes: prefixes)
+
         case "354": // WHOX reply: 354 <client> <querytype> [custom fields based on format]
             // Common format: 354 <client> <querytype> <channel> <user> <ip> <host> <server> <nick> <flags> <hopcount> <idle> <account> :<realname>
             guard message.params.count >= 2 else {
-                return false
+                return nil
             }
 
             // Try to parse common WHOX format with account
@@ -80,12 +81,13 @@ public struct User: Identifiable, Sendable {
                 self.username = message.params[3]
                 self.hostname = message.params[5]
                 self.server = message.params[6]
-                self.channel = message.params[2]
                 self.realname = message.params.last
+
+                let channel = message.params[2]
 
                 // Parse flags
                 let flags = message.params[8]
-                self.prefixes = Self.parsePrefixes(from: flags)
+                let prefixes = Self.parsePrefixes(from: flags)
 
                 // Parse account (0 means not logged in)
                 let accountStr = message.params[11]
@@ -97,7 +99,7 @@ public struct User: Identifiable, Sendable {
                 } else {
                     self.idleSeconds = nil
                 }
-                return true
+                return WhoResult(channel: channel, prefixes: prefixes)
             }
 
             // Fallback for other WHOX formats - try to extract what we can
@@ -110,17 +112,15 @@ public struct User: Identifiable, Sendable {
                 self.username = nil
                 self.hostname = nil
                 self.server = nil
-                self.channel = nil
                 self.realname = message.params.last
                 self.account = nil
                 self.idleSeconds = nil
-                self.prefixes = []
-                return true
+                return WhoResult(channel: nil, prefixes: [])
             }
 
-            return false
+            return nil
         default:
-            return false
+            return nil
         }
     }
 

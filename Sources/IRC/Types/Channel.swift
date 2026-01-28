@@ -8,6 +8,7 @@ public struct Channel: Identifiable, Sendable {
     public var modes: Set<Mode>
     public var modeParams: [String: String]  // mode -> parameter (e.g., "l" -> "50" for user limit)
     public var created: Date?
+    public var members: [String: Set<User.Prefix>]  // nick -> prefixes
 
     public var id: String { name }
 
@@ -30,6 +31,33 @@ public struct Channel: Identifiable, Sendable {
         self.modes = []
         self.modeParams = [:]
         self.created = nil
+        self.members = [:]
+    }
+
+    // MARK: - Member Management
+
+    /// Adds a member to the channel with the given prefixes
+    public mutating func addMember(_ nick: String, prefixes: Set<User.Prefix>) {
+        members[nick] = prefixes
+    }
+
+    /// Removes a member from the channel
+    public mutating func removeMember(_ nick: String) {
+        members.removeValue(forKey: nick)
+    }
+
+    /// Renames a member (e.g., when they change nick)
+    public mutating func renameMember(from oldNick: String, to newNick: String) {
+        if let prefixes = members.removeValue(forKey: oldNick) {
+            members[newNick] = prefixes
+        }
+    }
+
+    /// Updates the prefixes for a member
+    public mutating func updateMemberPrefixes(_ nick: String, prefixes: Set<User.Prefix>) {
+        if members[nick] != nil {
+            members[nick] = prefixes
+        }
     }
 
     // MARK: - Message Application

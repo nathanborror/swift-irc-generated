@@ -13,17 +13,17 @@ struct UserTests {
         let msg = Message.parse(":server 352 client #channel username host.com irc.server nick H :0 Real Name")
 
         var user = User(nick: "")
-        user.apply(msg)
+        let result = user.apply(msg)
 
         #expect(user.nick == "nick")
         #expect(user.username == "username")
         #expect(user.hostname == "host.com")
         #expect(user.server == "irc.server")
-        #expect(user.channel == "#channel")
         #expect(user.realname == "Real Name")
         #expect(user.account == nil)
         #expect(user.idleSeconds == nil)
-        #expect(user.prefixes.isEmpty == true)
+        #expect(result?.channel == "#channel")
+        #expect(result?.prefixes.isEmpty == true)
     }
 
     @Test("WHO reply with IRC operator flag")
@@ -31,11 +31,11 @@ struct UserTests {
         let msg = Message.parse(":server 352 client * username host.com irc.server nick H* :0 Real Name")
 
         var user = User(nick: "")
-        user.apply(msg)
+        let result = user.apply(msg)
 
         #expect(user.nick == "nick")
         #expect(user.username == "username")
-        #expect(user.prefixes.isEmpty == true)  // * is IRC operator, not a channel prefix
+        #expect(result?.prefixes.isEmpty == true)  // * is IRC operator, not a channel prefix
     }
 
     @Test("WHO reply with channel op")
@@ -43,12 +43,12 @@ struct UserTests {
         let msg = Message.parse(":server 352 client #channel username host.com irc.server nick H@ :0 Real Name")
 
         var user = User(nick: "")
-        user.apply(msg)
+        let result = user.apply(msg)
 
         #expect(user.nick == "nick")
-        #expect(user.channel == "#channel")
-        #expect(user.prefixes.contains(.op) == true)
-        #expect(user.prefixes.count == 1)
+        #expect(result?.channel == "#channel")
+        #expect(result?.prefixes.contains(.op) == true)
+        #expect(result?.prefixes.count == 1)
     }
 
     @Test("WHO reply with voice")
@@ -56,9 +56,9 @@ struct UserTests {
         let msg = Message.parse(":server 352 client #channel username host.com irc.server nick H+ :0 Real Name")
 
         var user = User(nick: "")
-        user.apply(msg)
+        let result = user.apply(msg)
 
-        #expect(user.prefixes.contains(.voice) == true)
+        #expect(result?.prefixes.contains(.voice) == true)
     }
 
     @Test("WHO reply with multiple prefixes")
@@ -66,11 +66,11 @@ struct UserTests {
         let msg = Message.parse(":server 352 client #channel username host.com irc.server nick H@+ :0 Real Name")
 
         var user = User(nick: "")
-        user.apply(msg)
+        let result = user.apply(msg)
 
-        #expect(user.prefixes.contains(.op) == true)
-        #expect(user.prefixes.contains(.voice) == true)
-        #expect(user.prefixes.count == 2)
+        #expect(result?.prefixes.contains(.op) == true)
+        #expect(result?.prefixes.contains(.voice) == true)
+        #expect(result?.prefixes.count == 2)
     }
 
     @Test("WHO reply with owner prefix")
@@ -78,9 +78,9 @@ struct UserTests {
         let msg = Message.parse(":server 352 client #channel username host.com irc.server nick H~ :0 Real Name")
 
         var user = User(nick: "")
-        user.apply(msg)
+        let result = user.apply(msg)
 
-        #expect(user.prefixes.contains(.owner) == true)
+        #expect(result?.prefixes.contains(.owner) == true)
     }
 
     @Test("WHO reply with away status")
@@ -141,17 +141,17 @@ struct UserTests {
         let msg = Message.parse(":server 354 client 1 #channel username 127.0.0.1 host.com irc.server nick H 0 0 accountname :Real Name")
 
         var user = User(nick: "")
-        user.apply(msg)
+        let result = user.apply(msg)
 
         #expect(user.nick == "nick")
         #expect(user.username == "username")
         #expect(user.hostname == "host.com")
         #expect(user.server == "irc.server")
-        #expect(user.channel == "#channel")
         #expect(user.realname == "Real Name")
         #expect(user.account == "accountname")
         #expect(user.idleSeconds == 0)
-        #expect(user.prefixes.isEmpty == true)
+        #expect(result?.channel == "#channel")
+        #expect(result?.prefixes.isEmpty == true)
     }
 
     @Test("WHOX reply with channel op")
@@ -159,10 +159,10 @@ struct UserTests {
         let msg = Message.parse(":server 354 client 1 #channel username 127.0.0.1 host.com irc.server nick H@ 0 0 accountname :Real Name")
 
         var user = User(nick: "")
-        user.apply(msg)
+        let result = user.apply(msg)
 
-        #expect(user.prefixes.contains(.op) == true)
-        #expect(user.channel == "#channel")
+        #expect(result?.prefixes.contains(.op) == true)
+        #expect(result?.channel == "#channel")
     }
 
     @Test("WHOX reply without account")
@@ -254,14 +254,14 @@ struct UserTests {
 
     // MARK: - User Properties
 
-    @Test("User ID includes channel")
+    @Test("User ID is just nick")
     func userID() {
         let msg = Message.parse(":server 352 client #channel user host.com irc.server testnick H :0 Real Name")
 
         var user = User(nick: "")
         user.apply(msg)
 
-        #expect(user.id == "#channel:testnick")
+        #expect(user.id == "testnick")
     }
 
     @Test("User authentication status with account")
