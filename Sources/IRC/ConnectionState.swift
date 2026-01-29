@@ -2,7 +2,8 @@ import Foundation
 import Observation
 
 @Observable
-public final class ConnectionState: @unchecked Sendable {
+@MainActor
+public final class ConnectionState {
     public private(set) var users: [String: User] = [:]
     public private(set) var channels: [String: Channel] = [:]
     public private(set) var myNick: String?
