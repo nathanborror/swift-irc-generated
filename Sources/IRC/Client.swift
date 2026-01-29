@@ -172,7 +172,13 @@ public actor Client {
             // Start background tasks
             readerTask = Task { await readLoop() }
             writerTask = Task { await writeLoop() }
-            pingTask = Task { await pingLoop() }
+            pingTask = Task {
+                do {
+                    try await pingLoop()
+                } catch {
+                    print(error)
+                }
+            }
 
             // Begin handshake
             await performHandshake()
@@ -190,7 +196,7 @@ public actor Client {
         if state == .registered {
             try await send(.quit(reason))
             // Give it a moment to send
-            try? await Task.sleep(for: .milliseconds(500))
+            try await Task.sleep(for: .milliseconds(500))
         }
 
         await cleanup()
@@ -205,7 +211,11 @@ public actor Client {
         writerTask = nil
         pingTask = nil
 
-        try? await transport.close()
+        do {
+            try await transport.close()
+        } catch {
+            print(error)
+        }
 
         state = .disconnected
         capNegotiationComplete = false
@@ -446,7 +456,7 @@ public actor Client {
 
                 if !line.isEmpty {
                     let message = Message.parse(line)
-                    await handleMessage(message)
+                    try await handleMessage(message)
                 }
 
             } catch {
@@ -474,15 +484,13 @@ public actor Client {
         }
     }
 
-    private func pingLoop() async {
+    private func pingLoop() async throws {
         while state != .disconnected {
-            try? await Task.sleep(nanoseconds: UInt64(config.pingTimeout * 0.5 * 1_000_000_000))
+            try await Task.sleep(nanoseconds: UInt64(config.pingTimeout * 0.5 * 1_000_000_000))
 
             if state == .registered {
                 // Check if we've timed out
-                if let lastPong = lastPongReceived,
-                    Date().timeIntervalSince(lastPong) > config.pingTimeout
-                {
+                if let lastPong = lastPongReceived, Date().timeIntervalSince(lastPong) > config.pingTimeout {
                     eventsContinuation.yield(.error("Ping timeout"))
                     await cleanup()
                     return
@@ -490,7 +498,7 @@ public actor Client {
 
                 // Send ping
                 let token = "\(Date().timeIntervalSince1970)"
-                try? await sendRaw("PING :\(token)")
+                try await sendRaw("PING :\(token)")
                 lastPingSent = Date()
             }
         }
@@ -498,7 +506,7 @@ public actor Client {
 
     // MARK: - Message Handling
 
-    private func handleMessage(_ message: Message) async {
+    private func handleMessage(_ message: Message) async throws {
         // Update pong tracking
         if message.command == "PONG" {
             lastPongReceived = Date()
@@ -511,7 +519,7 @@ public actor Client {
         switch message.command {
         case "PING":
             if let token = message.params.last {
-                try? await sendRaw("PONG :\(token)")
+                try await sendRaw("PONG :\(token)")
             }
 
         case "PRIVMSG":
@@ -577,7 +585,7 @@ public actor Client {
             }
 
         case "CAP":
-            await handleCAP(message)
+            try await handleCAP(message)
 
         case "AUTHENTICATE":
             await handleAuthenticate(message)
@@ -589,7 +597,7 @@ public actor Client {
             // Nick in use during registration, try alternate
             if state == .registering {
                 currentNick = currentNick + "_"
-                try? await send(.nick(currentNick))
+                try await send(.nick(currentNick))
             }
 
         default:
@@ -603,12 +611,12 @@ public actor Client {
                     // If we haven't sent NICK/USER yet (waiting for SASL for registered nick),
                     // send them now that we're authenticated
                     if !nickUserSent {
-                        try? await send(.nick(config.nick))
-                        try? await send(.user(username: config.username, realname: config.realname))
+                        try await send(.nick(config.nick))
+                        try await send(.user(username: config.username, realname: config.realname))
                         nickUserSent = true
                     }
 
-                    try? await sendRaw("CAP END")
+                    try await sendRaw("CAP END")
 
                 case 904, 905, 906:  // SASL failures
                     eventsContinuation.yield(.error("SASL authentication failed: \(message.raw)"))
@@ -617,12 +625,12 @@ public actor Client {
                     // If we haven't sent NICK/USER yet (waiting for SASL), send them now
                     // so we can continue registration even though SASL failed
                     if !nickUserSent {
-                        try? await send(.nick(config.nick))
-                        try? await send(.user(username: config.username, realname: config.realname))
+                        try await send(.nick(config.nick))
+                        try await send(.user(username: config.username, realname: config.realname))
                         nickUserSent = true
                     }
 
-                    try? await sendRaw("CAP END")
+                    try await sendRaw("CAP END")
 
                 default:
                     break
@@ -636,11 +644,9 @@ public actor Client {
         eventsContinuation.yield(.message(message))
     }
 
-    private func handleCAP(_ message: Message) async {
+    private func handleCAP(_ message: Message) async throws {
         guard message.params.count >= 2 else { return }
-
         let subcommand = message.params[1]
-
         switch subcommand {
         case "LS":
             // Server listing available capabilities
@@ -658,10 +664,10 @@ public actor Client {
                     // Request the caps we want
                     let requestCaps = config.requestedCaps.filter { availableCaps.contains($0) }
                     if !requestCaps.isEmpty {
-                        try? await sendRaw("CAP REQ :\(requestCaps.joined(separator: " "))")
+                        try await sendRaw("CAP REQ :\(requestCaps.joined(separator: " "))")
                     } else {
                         capNegotiationComplete = true
-                        try? await sendRaw("CAP END")
+                        try await sendRaw("CAP END")
                     }
                 }
             }
@@ -679,12 +685,12 @@ public actor Client {
                 if enabledCaps.contains("sasl"), let sasl = config.sasl, !saslAuthenticated {
                     switch sasl {
                     case .plain(_, _):
-                        try? await sendRaw("AUTHENTICATE PLAIN")
+                        try await sendRaw("AUTHENTICATE PLAIN")
                     // Will continue in handleAuthenticate
 
                     case .external:
-                        try? await sendRaw("AUTHENTICATE EXTERNAL")
-                        try? await sendRaw("AUTHENTICATE +")
+                        try await sendRaw("AUTHENTICATE EXTERNAL")
+                        try await sendRaw("AUTHENTICATE +")
                     }
                 } else {
                     capNegotiationComplete = true
@@ -692,12 +698,12 @@ public actor Client {
                     // If we haven't sent NICK/USER yet (because we were waiting for SASL),
                     // send them now before CAP END
                     if !nickUserSent {
-                        try? await send(.nick(config.nick))
-                        try? await send(.user(username: config.username, realname: config.realname))
+                        try await send(.nick(config.nick))
+                        try await send(.user(username: config.username, realname: config.realname))
                         nickUserSent = true
                     }
 
-                    try? await sendRaw("CAP END")
+                    try await sendRaw("CAP END")
                 }
             }
 
@@ -707,12 +713,12 @@ public actor Client {
 
             // If we haven't sent NICK/USER yet (waiting for SASL), send them now
             if !nickUserSent {
-                try? await send(.nick(config.nick))
-                try? await send(.user(username: config.username, realname: config.realname))
+                try await send(.nick(config.nick))
+                try await send(.user(username: config.username, realname: config.realname))
                 nickUserSent = true
             }
 
-            try? await sendRaw("CAP END")
+            try await sendRaw("CAP END")
 
         default:
             break
@@ -726,7 +732,11 @@ public actor Client {
             // Server ready for SASL PLAIN credentials
             let credentials = "\0\(username)\0\(password)"
             if let encoded = credentials.data(using: .utf8)?.base64EncodedString() {
-                try? await sendRaw("AUTHENTICATE \(encoded)")
+                do {
+                    try await sendRaw("AUTHENTICATE \(encoded)")
+                } catch {
+                    print(error)
+                }
             }
         }
     }
