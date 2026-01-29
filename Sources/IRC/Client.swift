@@ -141,6 +141,7 @@ public actor Client {
     private var readerTask: Task<Void, Never>?
     private var writerTask: Task<Void, Never>?
     private var pingTask: Task<Void, Never>?
+    private var aggregationCleanupTask: Task<Void, Never>?
 
     // Write queue
     private var writeQueue: [String] = []
@@ -185,6 +186,7 @@ public actor Client {
                     print(error)
                 }
             }
+            aggregationCleanupTask = Task { await aggregationCleanupLoop() }
 
             // Begin handshake
             await performHandshake()
@@ -212,10 +214,12 @@ public actor Client {
         readerTask?.cancel()
         writerTask?.cancel()
         pingTask?.cancel()
+        aggregationCleanupTask?.cancel()
 
         readerTask = nil
         writerTask = nil
         pingTask = nil
+        aggregationCleanupTask = nil
 
         do {
             try await transport.close()
@@ -233,17 +237,7 @@ public actor Client {
 
         // Complete any pending aggregations with error
         for (_, aggregation) in pendingAggregations {
-            if let whois = aggregation as? WhoisAggregation {
-                await whois.complete(error: ClientError.disconnected)
-            } else if let names = aggregation as? NamesAggregation {
-                await names.complete(error: ClientError.disconnected)
-            } else if let who = aggregation as? WhoAggregation {
-                await who.complete(error: ClientError.disconnected)
-            } else if let list = aggregation as? ListAggregation {
-                await list.complete(error: ClientError.disconnected)
-            } else if let motd = aggregation as? MOTDAggregation {
-                await motd.complete(error: ClientError.disconnected)
-            }
+            await aggregation.complete(error: ClientError.disconnected)
         }
         pendingAggregations.removeAll()
 
@@ -752,19 +746,23 @@ public actor Client {
 
             // Check if done
             if aggregation.isDone(message) {
-                if let whois = aggregation as? WhoisAggregation {
-                    await whois.complete()
-                } else if let names = aggregation as? NamesAggregation {
-                    await names.complete()
-                } else if let who = aggregation as? WhoAggregation {
-                    await who.complete()
-                } else if let list = aggregation as? ListAggregation {
-                    await list.complete()
-                } else if let motd = aggregation as? MOTDAggregation {
-                    await motd.complete()
-                }
-
+                await aggregation.complete(error: nil)
                 pendingAggregations.removeValue(forKey: key)
+            }
+        }
+    }
+
+    /// Background task that periodically checks for and removes timed-out aggregations
+    private func aggregationCleanupLoop() async {
+        while !Task.isCancelled {
+            // Check every 5 seconds
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+
+            for (key, aggregation) in pendingAggregations {
+                if await aggregation.isTimedOut() {
+                    await aggregation.complete(error: ClientError.timeout)
+                    pendingAggregations.removeValue(forKey: key)
+                }
             }
         }
     }

@@ -12,6 +12,9 @@ public protocol AnyAggregation: Sendable {
 
     /// Check if this aggregation has timed out
     func isTimedOut() async -> Bool
+
+    /// Complete this aggregation, optionally with an error
+    func complete(error: Error?) async
 }
 
 // MARK: - WHOIS Aggregation
@@ -107,7 +110,7 @@ public actor WhoisAggregation: AnyAggregation {
         }
     }
 
-    public func complete(error: Error? = nil) {
+    public func complete(error: Error? = nil) async {
         if let error = error {
             continuation?.resume(throwing: error)
         } else {
@@ -161,7 +164,7 @@ public actor NamesAggregation: AnyAggregation {
         }
     }
 
-    public func complete(error: Error? = nil) {
+    public func complete(error: Error? = nil) async {
         if let error = error {
             continuation?.resume(throwing: error)
         } else {
@@ -240,7 +243,7 @@ public actor WhoAggregation: AnyAggregation {
         }
     }
 
-    public func complete(error: Error? = nil) {
+    public func complete(error: Error? = nil) async {
         if let error = error {
             continuation?.resume(throwing: error)
         } else {
@@ -302,7 +305,7 @@ public actor ListAggregation: AnyAggregation {
         }
     }
 
-    public func complete(error: Error? = nil) {
+    public func complete(error: Error? = nil) async {
         if let error = error {
             continuation?.resume(throwing: error)
         } else {
@@ -353,7 +356,7 @@ public actor MOTDAggregation: AnyAggregation {
         }
     }
 
-    public func complete(error: Error? = nil) {
+    public func complete(error: Error? = nil) async {
         if let error = error {
             continuation?.resume(throwing: error)
         } else {
