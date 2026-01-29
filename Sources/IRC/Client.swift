@@ -153,8 +153,9 @@ public actor Client {
     private var pingTask: Task<Void, Never>?
     private var aggregationCleanupTask: Task<Void, Never>?
 
-    // Write queue
-    private var writeQueue: [String] = []
+    // Write queue using AsyncStream for efficient signaling
+    private var writeStream: AsyncStream<String>!
+    private var writeContinuation: AsyncStream<String>.Continuation!
 
     // Last activity tracking
     private var lastPingSent: Date?
@@ -169,15 +170,20 @@ public actor Client {
         self.rateLimitTokens = config.rateLimit.messagesPerWindow
         self.lastRateLimitRefill = Date()
 
-        var continuation: AsyncStream<Event>.Continuation!
-        self.events = AsyncStream { continuation = $0 }
-        self.eventsContinuation = continuation
+        var eventContinuation: AsyncStream<Event>.Continuation!
+        self.events = AsyncStream { eventContinuation = $0 }
+        self.eventsContinuation = eventContinuation
+
+        // Initialize write stream
+        var writeCont: AsyncStream<String>.Continuation!
+        self.writeStream = AsyncStream { writeCont = $0 }
+        self.writeContinuation = writeCont
     }
 
     // MARK: - Connection Management
 
     public func connect() async throws {
-        guard state == .disconnected else { return }
+        guard state == .disconnected else { throw ClientError.alreadyConnected }
 
         state = .connecting
         eventsContinuation.yield(.connected)
@@ -220,7 +226,7 @@ public actor Client {
         await cleanup()
     }
 
-    private func cleanup() async {
+    private func cleanup(intentional: Bool = true) async {
         readerTask?.cancel()
         writerTask?.cancel()
         pingTask?.cancel()
@@ -231,10 +237,16 @@ public actor Client {
         pingTask = nil
         aggregationCleanupTask = nil
 
+        // Finish the write stream and create a new one for potential reconnect
+        writeContinuation.finish()
+        var writeCont: AsyncStream<String>.Continuation!
+        writeStream = AsyncStream { writeCont = $0 }
+        writeContinuation = writeCont
+
         do {
             try await transport.close()
         } catch {
-            print(error)
+            // Transport close errors are non-fatal during cleanup
         }
 
         state = .disconnected
@@ -244,7 +256,6 @@ public actor Client {
         nickRetryCount = 0
         availableCaps.removeAll()
         enabledCaps.removeAll()
-        writeQueue.removeAll()
 
         // Complete any pending aggregations with error
         for (_, aggregation) in pendingAggregations {
@@ -253,6 +264,14 @@ public actor Client {
         pendingAggregations.removeAll()
 
         eventsContinuation.yield(.disconnected(nil))
+
+        // Auto-reconnect if enabled and this wasn't an intentional disconnect
+        if !intentional && config.autoReconnect {
+            Task {
+                try? await Task.sleep(for: .seconds(config.reconnectDelay))
+                try? await self.connect()
+            }
+        }
     }
 
     // MARK: - Handshake
@@ -290,7 +309,7 @@ public actor Client {
 
         } catch {
             eventsContinuation.yield(.error("Handshake failed: \(error)"))
-            await cleanup()
+            await cleanup(intentional: false)
         }
     }
 
@@ -451,7 +470,7 @@ public actor Client {
         }
 
         await applyRateLimit()
-        writeQueue.append(line)
+        writeContinuation.yield(line)
     }
 
     // MARK: - Background Loops
@@ -460,8 +479,8 @@ public actor Client {
         while state != .disconnected {
             do {
                 guard let line = try await transport.readLine() else {
-                    // Connection closed
-                    await cleanup()
+                    // Connection closed by server
+                    await cleanup(intentional: false)
                     return
                 }
 
@@ -472,25 +491,21 @@ public actor Client {
 
             } catch {
                 eventsContinuation.yield(.error("Read error: \(error)"))
-                await cleanup()
+                await cleanup(intentional: false)
                 return
             }
         }
     }
 
     private func writeLoop() async {
-        while state != .disconnected {
-            if let line = writeQueue.first {
-                do {
-                    try await transport.writeLine(line)
-                    writeQueue.removeFirst()
-                } catch {
-                    eventsContinuation.yield(.error("Write error: \(error)"))
-                    await cleanup()
-                    return
-                }
-            } else {
-                try? await Task.sleep(for: .milliseconds(10))
+        for await line in writeStream {
+            guard state != .disconnected else { return }
+            do {
+                try await transport.writeLine(line)
+            } catch {
+                eventsContinuation.yield(.error("Write error: \(error)"))
+                await cleanup(intentional: false)
+                return
             }
         }
     }
@@ -503,7 +518,7 @@ public actor Client {
                 // Check if we've timed out
                 if let lastPong = lastPongReceived, Date().timeIntervalSince(lastPong) > config.pingTimeout {
                     eventsContinuation.yield(.error("Ping timeout"))
-                    await cleanup()
+                    await cleanup(intentional: false)
                     return
                 }
 
@@ -610,7 +625,7 @@ public actor Client {
                 nickRetryCount += 1
                 if nickRetryCount > Self.maxNickRetries {
                     eventsContinuation.yield(.error("Failed to find available nick after \(Self.maxNickRetries) attempts"))
-                    await cleanup()
+                    await cleanup(intentional: false)
                 } else {
                     // Generate alternate nick respecting length limit
                     let suffix = String(repeating: "_", count: nickRetryCount)
