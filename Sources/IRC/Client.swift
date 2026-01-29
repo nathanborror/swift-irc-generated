@@ -111,9 +111,15 @@ public actor Client {
     private var registrationAwaiters: [CheckedContinuation<Void, Never>] = []
 
     // CAP negotiation state
+    private enum CapState {
+        case negotiating      // CAP LS sent, waiting for server caps
+        case requesting       // CAP REQ sent, waiting for ACK/NAK
+        case authenticating   // SASL authentication in progress
+        case complete         // CAP negotiation finished (CAP END sent or not needed)
+    }
+    private var capState: CapState = .negotiating
     private var availableCaps: Set<String> = []
     private var enabledCaps: Set<String> = []
-    private var capNegotiationComplete = false
     private var saslAuthenticated = false
     private var nickUserSent = false
 
@@ -218,7 +224,7 @@ public actor Client {
         }
 
         state = .disconnected
-        capNegotiationComplete = false
+        capState = .negotiating
         saslAuthenticated = false
         nickUserSent = false
         availableCaps.removeAll()
@@ -274,7 +280,7 @@ public actor Client {
 
             // If we're not doing CAP negotiation, we're done with our part
             if config.requestedCaps.isEmpty {
-                capNegotiationComplete = true
+                capState = .complete
             }
 
         } catch {
@@ -606,31 +612,12 @@ public actor Client {
                 switch code {
                 case 903:  // RPL_SASLSUCCESS
                     saslAuthenticated = true
-                    capNegotiationComplete = true
-
-                    // If we haven't sent NICK/USER yet (waiting for SASL for registered nick),
-                    // send them now that we're authenticated
-                    if !nickUserSent {
-                        try await send(.nick(config.nick))
-                        try await send(.user(username: config.username, realname: config.realname))
-                        nickUserSent = true
-                    }
-
-                    try await sendRaw("CAP END")
+                    try await finishCapNegotiation()
 
                 case 904, 905, 906:  // SASL failures
                     eventsContinuation.yield(.error("SASL authentication failed: \(message.raw)"))
                     saslAuthenticated = false
-
-                    // If we haven't sent NICK/USER yet (waiting for SASL), send them now
-                    // so we can continue registration even though SASL failed
-                    if !nickUserSent {
-                        try await send(.nick(config.nick))
-                        try await send(.user(username: config.username, realname: config.realname))
-                        nickUserSent = true
-                    }
-
-                    try await sendRaw("CAP END")
+                    try await finishCapNegotiation()
 
                 default:
                     break
@@ -664,10 +651,11 @@ public actor Client {
                     // Request the caps we want
                     let requestCaps = config.requestedCaps.filter { availableCaps.contains($0) }
                     if !requestCaps.isEmpty {
+                        capState = .requesting
                         try await sendRaw("CAP REQ :\(requestCaps.joined(separator: " "))")
                     } else {
-                        capNegotiationComplete = true
-                        try await sendRaw("CAP END")
+                        // No matching caps, finish negotiation
+                        try await finishCapNegotiation()
                     }
                 }
             }
@@ -683,6 +671,7 @@ public actor Client {
 
                 // If we got SASL, authenticate
                 if enabledCaps.contains("sasl"), let sasl = config.sasl, !saslAuthenticated {
+                    capState = .authenticating
                     switch sasl {
                     case .plain(_, _):
                         try await sendRaw("AUTHENTICATE PLAIN")
@@ -693,32 +682,14 @@ public actor Client {
                         try await sendRaw("AUTHENTICATE +")
                     }
                 } else {
-                    capNegotiationComplete = true
-
-                    // If we haven't sent NICK/USER yet (because we were waiting for SASL),
-                    // send them now before CAP END
-                    if !nickUserSent {
-                        try await send(.nick(config.nick))
-                        try await send(.user(username: config.username, realname: config.realname))
-                        nickUserSent = true
-                    }
-
-                    try await sendRaw("CAP END")
+                    // No SASL needed, finish negotiation
+                    try await finishCapNegotiation()
                 }
             }
 
         case "NAK":
             // Server rejected our capability request
-            capNegotiationComplete = true
-
-            // If we haven't sent NICK/USER yet (waiting for SASL), send them now
-            if !nickUserSent {
-                try await send(.nick(config.nick))
-                try await send(.user(username: config.username, realname: config.realname))
-                nickUserSent = true
-            }
-
-            try await sendRaw("CAP END")
+            try await finishCapNegotiation()
 
         default:
             break
@@ -739,6 +710,22 @@ public actor Client {
                 }
             }
         }
+    }
+
+    /// Completes CAP negotiation by sending NICK/USER if needed, then CAP END.
+    /// This centralizes the logic that was previously duplicated across multiple handlers.
+    private func finishCapNegotiation() async throws {
+        guard capState != .complete else { return }
+        capState = .complete
+
+        // Send NICK/USER if we haven't yet (e.g., when using SASL for registered nicks)
+        if !nickUserSent {
+            try await send(.nick(config.nick))
+            try await send(.user(username: config.username, realname: config.realname))
+            nickUserSent = true
+        }
+
+        try await sendRaw("CAP END")
     }
 
     private func markRegistered() async {
@@ -785,10 +772,9 @@ public actor Client {
     // MARK: - Rate Limiting
 
     private func applyRateLimit() async {
+        // Refill tokens if window has elapsed
         let now = Date()
         let elapsed = now.timeIntervalSince(lastRateLimitRefill)
-
-        // Refill tokens based on elapsed time
         if elapsed >= config.rateLimit.windowDuration {
             rateLimitTokens = config.rateLimit.messagesPerWindow
             lastRateLimitRefill = now
@@ -796,11 +782,11 @@ public actor Client {
 
         // Wait if no tokens available
         while rateLimitTokens <= 0 {
-            let waitTime = config.rateLimit.windowDuration - elapsed
+            let currentElapsed = Date().timeIntervalSince(lastRateLimitRefill)
+            let waitTime = config.rateLimit.windowDuration - currentElapsed
             if waitTime > 0 {
                 try? await Task.sleep(nanoseconds: UInt64(waitTime * 1_000_000_000))
             }
-
             rateLimitTokens = config.rateLimit.messagesPerWindow
             lastRateLimitRefill = Date()
         }
