@@ -28,7 +28,11 @@ public actor Client {
             public var messagesPerWindow: Int
             public var windowDuration: TimeInterval
 
+            /// Conservative default: 5 messages per 2 seconds (2.5 msg/sec)
+            /// Most IRC servers allow ~4-5 msg/sec before throttling
             public static let `default` = RateLimit(messagesPerWindow: 5, windowDuration: 2.0)
+
+            /// Effectively disables rate limiting (use with caution)
             public static let none = RateLimit(messagesPerWindow: Int.max, windowDuration: 0.001)
         }
 
@@ -102,6 +106,12 @@ public actor Client {
 
     private var state: State = .disconnected
     private var currentNick: String
+    private var nickRetryCount = 0
+
+    /// Maximum nick length (RFC 2812 says 9, but most modern servers allow 16-30+)
+    private static let maxNickLength = 30
+    /// Maximum attempts to find an available nick during registration
+    private static let maxNickRetries = 5
 
     // Event streaming
     public let events: AsyncStream<Event>
@@ -231,6 +241,7 @@ public actor Client {
         capState = .negotiating
         saslAuthenticated = false
         nickUserSent = false
+        nickRetryCount = 0
         availableCaps.removeAll()
         enabledCaps.removeAll()
         writeQueue.removeAll()
@@ -596,8 +607,17 @@ public actor Client {
         case "433":  // ERR_NICKNAMEINUSE
             // Nick in use during registration, try alternate
             if state == .registering {
-                currentNick = currentNick + "_"
-                try await send(.nick(currentNick))
+                nickRetryCount += 1
+                if nickRetryCount > Self.maxNickRetries {
+                    eventsContinuation.yield(.error("Failed to find available nick after \(Self.maxNickRetries) attempts"))
+                    await cleanup()
+                } else {
+                    // Generate alternate nick respecting length limit
+                    let suffix = String(repeating: "_", count: nickRetryCount)
+                    let baseNick = String(config.nick.prefix(Self.maxNickLength - suffix.count))
+                    currentNick = baseNick + suffix
+                    try await send(.nick(currentNick))
+                }
             }
 
         default:

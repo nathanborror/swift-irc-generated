@@ -44,7 +44,12 @@ public actor NWTransport: Transport {
 
     // Line buffering
     private var buffer = Data()
-    private let maxBufferSize = 1024 * 64  // 64KB max buffer
+
+    /// Maximum buffer size before discarding data (prevents memory exhaustion from malformed input)
+    private static let maxBufferSize = 64 * 1024  // 64KB
+
+    /// Size of each network receive operation (matches typical MTU for efficient reads)
+    private static let receiveBufferSize = 4096
 
     public init() {}
 
@@ -170,7 +175,7 @@ public actor NWTransport: Transport {
             buffer.append(data)
 
             // Check buffer size
-            if buffer.count > maxBufferSize {
+            if buffer.count > Self.maxBufferSize {
                 buffer.removeAll()
                 throw TransportError.invalidData
             }
@@ -184,7 +189,7 @@ public actor NWTransport: Transport {
 
     private func receiveData(from connection: NWConnection) async throws -> Data? {
         try await withCheckedThrowingContinuation { continuation in
-            connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) {
+            connection.receive(minimumIncompleteLength: 1, maximumLength: Self.receiveBufferSize) {
                 data, _, isComplete, error in
                 if let error = error {
                     continuation.resume(throwing: TransportError.readFailed(error))
