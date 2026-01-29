@@ -15,6 +15,5 @@ let package = Package(
     targets: [
         .target(name: "IRC"),
         .testTarget(name: "IRCTests", dependencies: ["IRC"]),
-        .executableTarget(name: "SimpleBot", dependencies: ["IRC"], path: "Examples/SimpleBot"),
     ]
 )
