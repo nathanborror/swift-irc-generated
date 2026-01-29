@@ -186,11 +186,11 @@ public actor Client {
         guard state == .disconnected else { throw ClientError.alreadyConnected }
 
         state = .connecting
-        eventsContinuation.yield(.connected)
 
         do {
             try await transport.open(host: config.server, port: config.port, tls: config.useTLS)
             state = .connected
+            eventsContinuation.yield(.connected)
 
             // Start background tasks
             readerTask = Task { await readLoop() }

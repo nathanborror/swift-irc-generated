@@ -95,17 +95,19 @@ public struct Channel: Identifiable, Sendable {
             return true
 
         case "324": // RPL_CHANNELMODEIS: 324 <client> <channel> <modes> [<mode params>]
+            // This is a full mode listing, so replace all modes
             guard message.params.count >= 3 else { return false }
             let modeString = message.params[2]
-            let (newModes, newParams) = Self.parseModes(modeString, params: Array(message.params.dropFirst(3)))
+            let (newModes, newParams) = Self.parseModes(modeString, params: Array(message.params.dropFirst(3)), existingModes: [], existingParams: [:])
             modes = newModes
             modeParams = newParams
             return true
 
         case "MODE": // MODE: :<nick>!<user>@<host> MODE <channel> <modes> [<params>]
+            // This is an incremental update, so apply changes to existing modes
             guard message.params.count >= 2 else { return false }
             let modeString = message.params[1]
-            let (newModes, newParams) = Self.parseModes(modeString, params: Array(message.params.dropFirst(2)))
+            let (newModes, newParams) = Self.parseModes(modeString, params: Array(message.params.dropFirst(2)), existingModes: modes, existingParams: modeParams)
             modes = newModes
             modeParams = newParams
             return true
@@ -124,9 +126,10 @@ public struct Channel: Identifiable, Sendable {
 
     /// Parses channel modes from MODE command or RPL_CHANNELMODEIS
     /// Mode string format: +imnst or +l 50 or +k password
-    private static func parseModes(_ modeString: String, params: [String]) -> (Set<Mode>, [String: String]) {
-        var modes: Set<Mode> = []
-        var modeParams: [String: String] = [:]
+    /// Takes existing modes/params and applies changes incrementally
+    private static func parseModes(_ modeString: String, params: [String], existingModes: Set<Mode>, existingParams: [String: String]) -> (Set<Mode>, [String: String]) {
+        var modes = existingModes
+        var modeParams = existingParams
         var paramIndex = 0
         var adding = true
 
@@ -140,7 +143,7 @@ public struct Channel: Identifiable, Sendable {
                 if let mode = Mode(rawValue: String(char)) {
                     if adding {
                         modes.insert(mode)
-                        // Handle modes that take parameters
+                        // Handle modes that take parameters when adding
                         if mode == .key || mode == .userLimit {
                             if paramIndex < params.count {
                                 modeParams[String(char)] = params[paramIndex]
@@ -150,6 +153,11 @@ public struct Channel: Identifiable, Sendable {
                     } else {
                         modes.remove(mode)
                         modeParams.removeValue(forKey: String(char))
+                        // Some servers send the old value as a parameter when removing +k
+                        // Consume it to keep param indexing in sync
+                        if mode == .key && paramIndex < params.count {
+                            paramIndex += 1
+                        }
                     }
                 }
             }
