@@ -174,6 +174,19 @@ extension Message {
             }
             return nil
         default:
+            // Handle numeric replies where channel is in params[1]
+            // 324 RPL_CHANNELMODEIS, 329 RPL_CREATIONTIME, 331 RPL_NOTOPIC,
+            // 332 RPL_TOPIC, 333 RPL_TOPICWHOTIME, 353 RPL_NAMREPLY, 366 RPL_ENDOFNAMES
+            if let code = numericCode {
+                switch code {
+                case 324, 329, 331, 332, 333, 353, 366:
+                    if params.count >= 2 {
+                        return params[1]
+                    }
+                default:
+                    break
+                }
+            }
             return nil
         }
     }
