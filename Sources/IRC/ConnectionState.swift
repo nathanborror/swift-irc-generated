@@ -73,6 +73,19 @@ public final class ConnectionState: @unchecked Sendable {
         }
     }
 
+    private func ensureUserFromNames(nick: String, user: String?, host: String?) {
+        if users[nick] == nil {
+            var newUser = User(nick: nick)
+            newUser.username = user
+            newUser.hostname = host
+            users[nick] = newUser
+        } else if user != nil || host != nil {
+            // Update existing user with new info if available
+            users[nick]?.username = users[nick]?.username ?? user
+            users[nick]?.hostname = users[nick]?.hostname ?? host
+        }
+    }
+
     private func removeUserFromAllChannels(_ nick: String) {
         for channelName in channels.keys {
             channels[channelName]?.removeMember(nick)
@@ -132,29 +145,48 @@ public final class ConnectionState: @unchecked Sendable {
         ensureChannel(channelName)
 
         // Parse nick list - each nick may have prefixes like @nick or +nick
+        // With userhost-in-names capability, format is @nick!user@host
         let nicks = nickList.split(separator: " ")
         for nickWithPrefix in nicks {
-            let (nick, prefixes) = parseNickWithPrefixes(String(nickWithPrefix))
+            let (nick, user, host, prefixes) = parseNickWithPrefixes(String(nickWithPrefix))
             channels[channelName]?.addMember(nick, prefixes: prefixes)
-            ensureUser(nick, from: message)
+            ensureUserFromNames(nick: nick, user: user, host: host)
         }
     }
 
-    private func parseNickWithPrefixes(_ nickWithPrefix: String) -> (String, Set<User.Prefix>) {
+    /// Parses a nick entry from NAMES reply, returning (nick, user, host, prefixes)
+    /// Handles both simple format (@nick) and userhost-in-names format (@nick!user@host)
+    private func parseNickWithPrefixes(_ nickWithPrefix: String) -> (nick: String, user: String?, host: String?, prefixes: Set<User.Prefix>) {
         var prefixes: Set<User.Prefix> = []
-        var nick = nickWithPrefix
+        var remaining = nickWithPrefix
 
-        // Strip leading prefix characters
-        while let first = nick.first {
+        // Strip leading channel prefix characters (@, +, %, ~, &)
+        while let first = remaining.first {
             if let prefix = User.Prefix(rawValue: String(first)) {
                 prefixes.insert(prefix)
-                nick = String(nick.dropFirst())
+                remaining = String(remaining.dropFirst())
             } else {
                 break
             }
         }
 
-        return (nick, prefixes)
+        // Check for userhost-in-names format: nick!user@host
+        if let bangIdx = remaining.firstIndex(of: "!") {
+            let nick = String(remaining[..<bangIdx])
+            let afterBang = remaining.index(after: bangIdx)
+            let userHost = remaining[afterBang...]
+
+            if let atIdx = userHost.firstIndex(of: "@") {
+                let user = String(userHost[..<atIdx])
+                let host = String(userHost[userHost.index(after: atIdx)...])
+                return (nick, user, host, prefixes)
+            } else {
+                // Has ! but no @, treat rest as user
+                return (nick, String(userHost), nil, prefixes)
+            }
+        }
+
+        return (remaining, nil, nil, prefixes)
     }
 
     // MARK: - WHO/WHOX Parsing
