@@ -75,15 +75,20 @@ public final class ConnectionState {
     }
 
     private func ensureUserFromNames(nick: String, user: String?, host: String?) {
-        if users[nick] == nil {
+        if var existingUser = users[nick] {
+            // Update existing user with new info if not already set
+            if existingUser.username == nil {
+                existingUser.username = user
+            }
+            if existingUser.hostname == nil {
+                existingUser.hostname = host
+            }
+            users[nick] = existingUser
+        } else {
             var newUser = User(nick: nick)
             newUser.username = user
             newUser.hostname = host
             users[nick] = newUser
-        } else if user != nil || host != nil {
-            // Update existing user with new info if available
-            users[nick]?.username = users[nick]?.username ?? user
-            users[nick]?.hostname = users[nick]?.hostname ?? host
         }
     }
 
