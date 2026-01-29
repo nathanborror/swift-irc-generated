@@ -144,7 +144,7 @@ struct MessageTests {
 
     @Test("Timestamp property parsing")
     func timestampProperty() {
-        // Test with valid time tag
+        // Test with valid time tag (with fractional seconds)
         let msg = Message.parse("@time=2024-01-15T10:30:00.000Z PRIVMSG #channel :Hello")
 
         #expect(msg.timestamp != nil)
@@ -154,6 +154,14 @@ struct MessageTests {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let expectedDate = formatter.date(from: "2024-01-15T10:30:00.000Z")
         #expect(msg.timestamp == expectedDate)
+
+        // Test without fractional seconds (many servers send this format)
+        let msgNoFractional = Message.parse("@time=2024-01-15T10:30:00Z PRIVMSG #channel :Hello")
+        #expect(msgNoFractional.timestamp != nil)
+        let formatterNoFrac = ISO8601DateFormatter()
+        formatterNoFrac.formatOptions = [.withInternetDateTime]
+        let expectedDateNoFrac = formatterNoFrac.date(from: "2024-01-15T10:30:00Z")
+        #expect(msgNoFractional.timestamp == expectedDateNoFrac)
 
         // Test without time tag
         let msgNoTime = Message.parse("PRIVMSG #channel :Hello")

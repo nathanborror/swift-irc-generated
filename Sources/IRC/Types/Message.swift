@@ -195,10 +195,18 @@ extension Message {
     }
 
     /// Parses and returns the timestamp from the IRCv3 'time' tag if available
+    /// Handles both formats: with fractional seconds (2023-01-15T10:30:00.123Z)
+    /// and without (2023-01-15T10:30:00Z)
     public var timestamp: Date? {
         guard let timeTag = tags["time"] else { return nil }
         let formatter = ISO8601DateFormatter()
+        // Try with fractional seconds first
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: timeTag) {
+            return date
+        }
+        // Fall back to without fractional seconds
+        formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: timeTag)
     }
 }
