@@ -7,43 +7,128 @@ import CryptoKit
 @Suite("WebPush Tests")
 struct WebPushTests {
 
-    @Test("Decrypting push")
-    func decrypt() throws {
-        let bodyStr = """
-            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
-            """
-        let bodyData = Data(base64Encoded: bodyStr)!
+    // MARK: - Test Data
 
-        let privateKeyRaw = "VOwgQnpKqYoUJlu46ZoXVENkYfZjcbminrd3zWJw9gI="
-        let privateKeyData = Data.fromAnyBase64(privateKeyRaw)!
+    /// Known-good encrypted body for testing
+    static let testBodyStr = """
+        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
+        """
+    static let testPrivateKeyBase64 = "VOwgQnpKqYoUJlu46ZoXVENkYfZjcbminrd3zWJw9gI="
+    static let testAuthBase64url = "pAs-2SudzJINENeFcSM4qg"
+    static let expectedDecryptedMessage = "@time=2026-01-26T23:47:50.604Z :nathan!~u@irj9c9y2tikz2.irc PRIVMSG #wild :hi iruvir-kelvel"
+
+    // MARK: - Key Generation Tests
+
+    @Test("Generate keys produces valid structure")
+    func generateKeysProducesValidStructure() throws {
+        let keys = try WebPush.generateKeys()
+
+        // p256dh should be a non-empty base64url string
+        #expect(!keys.p256dh.isEmpty)
+
+        // auth should be a non-empty base64url string
+        #expect(!keys.auth.isEmpty)
+
+        // privateKeyRaw should be 32 bytes for P-256
+        #expect(keys.privateKeyRaw.count == 32)
+    }
+
+    @Test("Generate keys produces valid p256dh public key")
+    func generateKeysProducesValidP256dh() throws {
+        let keys = try WebPush.generateKeys()
+
+        // Decode p256dh from base64url
+        let p256dhData = Data.fromAnyBase64(keys.p256dh)
+        #expect(p256dhData != nil)
+
+        // Should be 65 bytes (uncompressed EC point: 0x04 || X || Y)
+        #expect(p256dhData?.count == 65)
+
+        // First byte should be 0x04 (uncompressed point indicator)
+        #expect(p256dhData?.first == 0x04)
+
+        // Should be importable as a public key
+        let publicKey = try? P256.KeyAgreement.PublicKey(x963Representation: p256dhData!)
+        #expect(publicKey != nil)
+    }
+
+    @Test("Generate keys produces valid auth secret")
+    func generateKeysProducesValidAuth() throws {
+        let keys = try WebPush.generateKeys()
+
+        // Decode auth from base64url
+        let authData = Data.fromAnyBase64(keys.auth)
+        #expect(authData != nil)
+
+        // Default should be 16 bytes
+        #expect(authData?.count == 16)
+    }
+
+    @Test("Generate keys with custom auth bytes")
+    func generateKeysWithCustomAuthBytes() throws {
+        let keys = try WebPush.generateKeys(authBytes: 32)
+
+        let authData = Data.fromAnyBase64(keys.auth)
+        #expect(authData?.count == 32)
+    }
+
+    @Test("Generate keys produces usable private key")
+    func generateKeysProducesUsablePrivateKey() throws {
+        let keys = try WebPush.generateKeys()
+
+        // Should be able to reconstruct the private key
+        let privateKey = try? P256.KeyAgreement.PrivateKey(rawRepresentation: keys.privateKeyRaw)
+        #expect(privateKey != nil)
+
+        // The reconstructed public key should match p256dh
+        let p256dhData = Data.fromAnyBase64(keys.p256dh)!
+        #expect(privateKey?.publicKey.x963Representation == p256dhData)
+    }
+
+    @Test("Generate keys produces unique keys each time")
+    func generateKeysProducesUniqueKeys() throws {
+        let keys1 = try WebPush.generateKeys()
+        let keys2 = try WebPush.generateKeys()
+
+        // Keys should be different
+        #expect(keys1.p256dh != keys2.p256dh)
+        #expect(keys1.auth != keys2.auth)
+        #expect(keys1.privateKeyRaw != keys2.privateKeyRaw)
+    }
+
+    // MARK: - Decryption Tests
+
+    @Test("Decrypt push with Data parameters")
+    func decryptWithDataParameters() throws {
+        let bodyData = Data(base64Encoded: Self.testBodyStr)!
+        let privateKeyData = Data.fromAnyBase64(Self.testPrivateKeyBase64)!
         let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
-
-        let authKey = Data.fromAnyBase64("pAs-2SudzJINENeFcSM4qg")!
+        let authKey = Data.fromAnyBase64(Self.testAuthBase64url)!
 
         let decrypted = try WebPush.decrypt(
             body: bodyData,
@@ -52,6 +137,192 @@ struct WebPushTests {
         )
 
         let text = String(data: decrypted, encoding: .utf8)
-        #expect(text == "@time=2026-01-26T23:47:50.604Z :nathan!~u@irj9c9y2tikz2.irc PRIVMSG #wild :hi iruvir-kelvel")
+        #expect(text == Self.expectedDecryptedMessage)
+    }
+
+    @Test("Decrypt push with String parameters")
+    func decryptWithStringParameters() throws {
+        let bodyData = Data(base64Encoded: Self.testBodyStr)!
+
+        let decrypted = try WebPush.decrypt(
+            body: bodyData,
+            auth: Self.testAuthBase64url,
+            privateKey: Self.testPrivateKeyBase64
+        )
+
+        let text = String(data: decrypted, encoding: .utf8)
+        #expect(text == Self.expectedDecryptedMessage)
+    }
+
+    // MARK: - Error Tests
+
+    @Test("Decrypt throws bodyTooShort for empty body")
+    func decryptThrowsBodyTooShortForEmptyBody() throws {
+        let emptyBody = Data()
+        let authKey = Data.fromAnyBase64(Self.testAuthBase64url)!
+        let privateKeyData = Data.fromAnyBase64(Self.testPrivateKeyBase64)!
+        let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(body: emptyBody, auth: authKey, privateKey: privateKey)
+        }
+    }
+
+    @Test("Decrypt throws bodyTooShort for body under 21 bytes")
+    func decryptThrowsBodyTooShortForShortBody() throws {
+        // Body needs at least 21 bytes (16 salt + 4 rs + 1 idlen)
+        let shortBody = Data(repeating: 0, count: 20)
+        let authKey = Data.fromAnyBase64(Self.testAuthBase64url)!
+        let privateKeyData = Data.fromAnyBase64(Self.testPrivateKeyBase64)!
+        let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(body: shortBody, auth: authKey, privateKey: privateKey)
+        }
+    }
+
+    @Test("Decrypt throws invalidKeyIDLength for zero idlen")
+    func decryptThrowsInvalidKeyIDLengthForZeroIdlen() throws {
+        // Create a body with valid header but idlen = 0
+        var body = Data(repeating: 0, count: 21)
+        body[20] = 0  // idlen = 0
+
+        let authKey = Data.fromAnyBase64(Self.testAuthBase64url)!
+        let privateKeyData = Data.fromAnyBase64(Self.testPrivateKeyBase64)!
+        let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(body: body, auth: authKey, privateKey: privateKey)
+        }
+    }
+
+    @Test("Decrypt throws invalidKeyIDLength when body too short for idlen")
+    func decryptThrowsInvalidKeyIDLengthWhenBodyTooShort() throws {
+        // Create body with idlen claiming more bytes than available
+        var body = Data(repeating: 0, count: 22)
+        body[20] = 65  // idlen = 65 (requires 65 more bytes, but only 1 available)
+
+        let authKey = Data.fromAnyBase64(Self.testAuthBase64url)!
+        let privateKeyData = Data.fromAnyBase64(Self.testPrivateKeyBase64)!
+        let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(body: body, auth: authKey, privateKey: privateKey)
+        }
+    }
+
+    @Test("Decrypt throws invalidSenderPublicKey for wrong key size")
+    func decryptThrowsInvalidSenderPublicKeyForWrongSize() throws {
+        // Create body with idlen = 32 (not 65)
+        var body = Data(repeating: 0, count: 21 + 32 + 16)  // header + keyid + minimal ciphertext
+        body[20] = 32  // idlen = 32 (wrong, should be 65)
+
+        let authKey = Data.fromAnyBase64(Self.testAuthBase64url)!
+        let privateKeyData = Data.fromAnyBase64(Self.testPrivateKeyBase64)!
+        let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(body: body, auth: authKey, privateKey: privateKey)
+        }
+    }
+
+    @Test("Decrypt throws invalidSenderPublicKey for wrong first byte")
+    func decryptThrowsInvalidSenderPublicKeyForWrongFirstByte() throws {
+        // Create body with 65-byte key but wrong first byte
+        var body = Data(repeating: 0, count: 21 + 65 + 16)
+        body[20] = 65  // idlen = 65
+        body[21] = 0x02  // Wrong first byte (should be 0x04)
+
+        let authKey = Data.fromAnyBase64(Self.testAuthBase64url)!
+        let privateKeyData = Data.fromAnyBase64(Self.testPrivateKeyBase64)!
+        let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(body: body, auth: authKey, privateKey: privateKey)
+        }
+    }
+
+    @Test("Decrypt throws invalidBase64url for invalid auth string")
+    func decryptThrowsInvalidBase64urlForInvalidAuth() throws {
+        let bodyData = Data(base64Encoded: Self.testBodyStr)!
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(
+                body: bodyData,
+                auth: "!!!invalid!!!",
+                privateKey: Self.testPrivateKeyBase64
+            )
+        }
+    }
+
+    @Test("Decrypt throws invalidBase64url for invalid privateKey string")
+    func decryptThrowsInvalidBase64urlForInvalidPrivateKey() throws {
+        let bodyData = Data(base64Encoded: Self.testBodyStr)!
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(
+                body: bodyData,
+                auth: Self.testAuthBase64url,
+                privateKey: "!!!invalid!!!"
+            )
+        }
+    }
+
+    @Test("Decrypt throws invalidPrivateKey for wrong size key data")
+    func decryptThrowsInvalidPrivateKeyForWrongSize() throws {
+        let bodyData = Data(base64Encoded: Self.testBodyStr)!
+        // Create a 16-byte key instead of 32-byte
+        let wrongSizeKey = Data(repeating: 0xAB, count: 16).base64EncodedString()
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(
+                body: bodyData,
+                auth: Self.testAuthBase64url,
+                privateKey: wrongSizeKey
+            )
+        }
+    }
+
+    @Test("Decrypt throws ciphertextTooShort when no ciphertext")
+    func decryptThrowsCiphertextTooShortWhenNoCiphertext() throws {
+        // Create a valid header with proper 65-byte public key but no ciphertext
+        var body = Data(repeating: 0, count: 21 + 65)
+        body[20] = 65  // idlen = 65
+        body[21] = 0x04  // Correct first byte for uncompressed point
+
+        // Fill with valid-looking (but random) public key bytes
+        for i in 22..<86 {
+            body[i] = UInt8(i % 256)
+        }
+
+        let authKey = Data.fromAnyBase64(Self.testAuthBase64url)!
+        let privateKeyData = Data.fromAnyBase64(Self.testPrivateKeyBase64)!
+        let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
+
+        #expect(throws: WebPush.Error.self) {
+            _ = try WebPush.decrypt(body: body, auth: authKey, privateKey: privateKey)
+        }
+    }
+
+    // MARK: - Round-trip Tests
+
+    @Test("Generated keys can be used for key agreement")
+    func generatedKeysCanBeUsedForKeyAgreement() throws {
+        let keys = try WebPush.generateKeys()
+
+        // Create private key from raw representation
+        let privateKey = try P256.KeyAgreement.PrivateKey(rawRepresentation: keys.privateKeyRaw)
+
+        // Create another keypair to simulate sender
+        let senderPrivateKey = P256.KeyAgreement.PrivateKey()
+
+        // Both sides should be able to derive shared secret
+        let receiverSharedSecret = try privateKey.sharedSecretFromKeyAgreement(with: senderPrivateKey.publicKey)
+        let senderSharedSecret = try senderPrivateKey.sharedSecretFromKeyAgreement(with: privateKey.publicKey)
+
+        // Shared secrets should match
+        let receiverSecretData = receiverSharedSecret.withUnsafeBytes { Data($0) }
+        let senderSecretData = senderSharedSecret.withUnsafeBytes { Data($0) }
+        #expect(receiverSecretData == senderSecretData)
     }
 }
