@@ -10,6 +10,8 @@ public struct WebPush {
         case ciphertextTooShort
         case badPadding
         case unexpectedPublicKeyFormat
+        case invalidBase64url(String)
+        case invalidPrivateKey
     }
 
     public struct Keys {
@@ -141,6 +143,29 @@ public struct WebPush {
         return try stripRFC8188Padding(plaintext)
     }
 
+    /// Convenience method that decrypts using base64url-encoded string parameters.
+    ///
+    /// - Parameters:
+    ///   - body: Raw HTTP body bytes (starts with salt/rs/idlen/keyid...)
+    ///   - auth: Your subscription `auth` secret as a base64url string (no padding)
+    ///   - privateKey: Your subscription private key raw bytes as a base64url string (no padding)
+    /// - Returns: Decrypted payload bytes (padding removed)
+    public static func decrypt(body: Data, auth: String, privateKey: String) throws -> Data {
+        guard let authData = base64urlDecode(auth) else {
+            throw Error.invalidBase64url("auth")
+        }
+        guard let privateKeyData = base64urlDecode(privateKey) else {
+            throw Error.invalidBase64url("privateKey")
+        }
+        let key: P256.KeyAgreement.PrivateKey
+        do {
+            key = try P256.KeyAgreement.PrivateKey(rawRepresentation: privateKeyData)
+        } catch {
+            throw Error.invalidPrivateKey
+        }
+        return try decrypt(body: body, auth: authData, privateKey: key)
+    }
+
     private static func stripRFC8188Padding(_ plaintext: Data) throws -> Data {
         if plaintext.isEmpty { return plaintext }
 
@@ -172,6 +197,19 @@ public struct WebPush {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+
+    /// Decodes RFC 4648 base64url (with or without padding)
+    private static func base64urlDecode(_ string: String) -> Data? {
+        var base64 = string
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        // Add padding if needed
+        let remainder = base64.count % 4
+        if remainder > 0 {
+            base64 += String(repeating: "=", count: 4 - remainder)
+        }
+        return Data(base64Encoded: base64)
     }
 
 }
