@@ -198,6 +198,8 @@ public actor Client {
             pingTask = Task {
                 do {
                     try await pingLoop()
+                } catch is CancellationError {
+                    // Expected during disconnect, ignore
                 } catch {
                     print(error)
                 }
