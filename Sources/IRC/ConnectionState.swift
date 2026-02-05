@@ -23,8 +23,8 @@ public final class ConnectionState {
             channels[channel]?.addMember(nick, prefixes: [])
             ensureUser(nick, from: message)
 
-        case .part(let channel, let nick, _, _):
-            channels[channel]?.removeMember(nick)
+        case .part(let channel, _, _, _):
+            channels.removeValue(forKey: channel)
 
         case .quit(let nick, _, _):
             removeUserFromAllChannels(nick)
