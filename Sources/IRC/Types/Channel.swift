@@ -8,7 +8,7 @@ public struct Channel: Identifiable, Sendable {
     public var modes: Set<Mode>
     public var modeParams: [String: String]  // mode -> parameter (e.g., "l" -> "50" for user limit)
     public var created: Date?
-    public var members: [String: Set<User.Prefix>]  // nick -> prefixes
+    public var members: [String: Set<Prefix>]  // nick -> prefixes
 
     public var id: String { name }
 
@@ -23,6 +23,14 @@ public struct Channel: Identifiable, Sendable {
         case userLimit = "l"
     }
 
+    public enum Prefix: String, Sendable {
+        case owner = "~"
+        case admin = "&"
+        case op = "@"
+        case halfop = "%"
+        case voice = "+"
+    }
+
     public init(name: String) {
         self.name = name
         self.topic = nil
@@ -32,137 +40,5 @@ public struct Channel: Identifiable, Sendable {
         self.modeParams = [:]
         self.created = nil
         self.members = [:]
-    }
-
-    // MARK: - Member Management
-
-    /// Adds a member to the channel with the given prefixes
-    public mutating func addMember(_ nick: String, prefixes: Set<User.Prefix>) {
-        members[nick] = prefixes
-    }
-
-    /// Removes a member from the channel
-    public mutating func removeMember(_ nick: String) {
-        members.removeValue(forKey: nick)
-    }
-
-    /// Renames a member (e.g., when they change nick)
-    public mutating func renameMember(from oldNick: String, to newNick: String) {
-        if let prefixes = members.removeValue(forKey: oldNick) {
-            members[newNick] = prefixes
-        }
-    }
-
-    /// Updates the prefixes for a member
-    public mutating func updateMemberPrefixes(_ nick: String, prefixes: Set<User.Prefix>) {
-        if members[nick] != nil {
-            members[nick] = prefixes
-        }
-    }
-
-    // MARK: - Message Application
-
-    /// Applies an IRC message to update channel state
-    /// Returns true if the message was relevant and applied, false otherwise
-    @discardableResult
-    public mutating func apply(_ message: Message) -> Bool {
-        guard let channel = message.channel, channel == name else {
-            return false
-        }
-        switch message.command {
-        case "332": // RPL_TOPIC: 332 <client> <channel> :<topic>
-            guard message.params.count >= 3 else { return false }
-            topic = message.params[2]
-            return true
-
-        case "331": // RPL_NOTOPIC: 331 <client> <channel> :No topic is set
-            topic = nil
-            return true
-
-        case "333": // RPL_TOPICWHOTIME: 333 <client> <channel> <nick> <timestamp>
-            guard message.params.count >= 4 else { return false }
-            topicSetBy = message.params[2]
-            if let timestamp = TimeInterval(message.params[3]) {
-                topicSetAt = Date(timeIntervalSince1970: timestamp)
-            }
-            return true
-
-        case "TOPIC": // TOPIC: :<nick>!<user>@<host> TOPIC <channel> :<topic>
-            guard message.params.count >= 2 else { return false }
-            topic = message.params[1]
-            topicSetBy = message.nick
-            topicSetAt = message.timestamp ?? Date()
-            return true
-
-        case "324": // RPL_CHANNELMODEIS: 324 <client> <channel> <modes> [<mode params>]
-            // This is a full mode listing, so replace all modes
-            guard message.params.count >= 3 else { return false }
-            let modeString = message.params[2]
-            let (newModes, newParams) = Self.parseModes(modeString, params: Array(message.params.dropFirst(3)), existingModes: [], existingParams: [:])
-            modes = newModes
-            modeParams = newParams
-            return true
-
-        case "MODE": // MODE: :<nick>!<user>@<host> MODE <channel> <modes> [<params>]
-            // This is an incremental update, so apply changes to existing modes
-            guard message.params.count >= 2 else { return false }
-            let modeString = message.params[1]
-            let (newModes, newParams) = Self.parseModes(modeString, params: Array(message.params.dropFirst(2)), existingModes: modes, existingParams: modeParams)
-            modes = newModes
-            modeParams = newParams
-            return true
-
-        case "329": // RPL_CREATIONTIME: 329 <client> <channel> <timestamp>
-            guard message.params.count >= 3 else { return false }
-            if let timestamp = TimeInterval(message.params[2]) {
-                created = Date(timeIntervalSince1970: timestamp)
-            }
-            return true
-
-        default:
-            return false
-        }
-    }
-
-    /// Parses channel modes from MODE command or RPL_CHANNELMODEIS
-    /// Mode string format: +imnst or +l 50 or +k password
-    /// Takes existing modes/params and applies changes incrementally
-    private static func parseModes(_ modeString: String, params: [String], existingModes: Set<Mode>, existingParams: [String: String]) -> (Set<Mode>, [String: String]) {
-        var modes = existingModes
-        var modeParams = existingParams
-        var paramIndex = 0
-        var adding = true
-
-        for char in modeString {
-            switch char {
-            case "+":
-                adding = true
-            case "-":
-                adding = false
-            default:
-                if let mode = Mode(rawValue: String(char)) {
-                    if adding {
-                        modes.insert(mode)
-                        // Handle modes that take parameters when adding
-                        if mode == .key || mode == .userLimit {
-                            if paramIndex < params.count {
-                                modeParams[String(char)] = params[paramIndex]
-                                paramIndex += 1
-                            }
-                        }
-                    } else {
-                        modes.remove(mode)
-                        modeParams.removeValue(forKey: String(char))
-                        // Some servers send the old value as a parameter when removing +k
-                        // Consume it to keep param indexing in sync
-                        if mode == .key && paramIndex < params.count {
-                            paramIndex += 1
-                        }
-                    }
-                }
-            }
-        }
-
-        return (modes, modeParams)
     }
 }
