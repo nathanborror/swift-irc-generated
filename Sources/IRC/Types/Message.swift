@@ -122,33 +122,14 @@ extension Message {
 // MARK: - Helpers
 
 extension Message {
-    /// Extracts nickname from prefix (nick!user@host)
+
+    public var user: User? {
+        guard let prefix else { return nil }
+        return User(mask: prefix)
+    }
+
     public var nick: String? {
-        guard let prefix = prefix else { return nil }
-        if let bangIdx = prefix.firstIndex(of: "!") {
-            return String(prefix[..<bangIdx])
-        }
-        return prefix
-    }
-
-    /// Extracts user from prefix (nick!user@host)
-    public var user: String? {
-        guard let prefix = prefix else { return nil }
-        guard let bangIdx = prefix.firstIndex(of: "!") else { return nil }
-        let afterBang = prefix.index(after: bangIdx)
-        if let atIdx = prefix[afterBang...].firstIndex(of: "@") {
-            return String(prefix[afterBang..<atIdx])
-        }
-        return String(prefix[afterBang...])
-    }
-
-    /// Extracts host from prefix (nick!user@host)
-    public var host: String? {
-        guard let prefix = prefix else { return nil }
-        if let atIdx = prefix.firstIndex(of: "@") {
-            return String(prefix[prefix.index(after: atIdx)...])
-        }
-        return nil
+        user?.nick
     }
 
     /// Gets the target of a message (first param for most commands)

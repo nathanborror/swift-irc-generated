@@ -63,9 +63,9 @@ struct MessageTests {
         #expect(msg.prefix == "server.name")
         #expect(msg.command == "PING")
         #expect(msg.params == ["token"])
-        #expect(msg.nick == "server.name")
-        #expect(msg.user == nil)
-        #expect(msg.host == nil)
+        #expect(msg.user?.nick == "server.name")
+        #expect(msg.user?.username == nil)
+        #expect(msg.user?.host == nil)
     }
 
     @Test("Full user prefix parsing")
@@ -74,8 +74,8 @@ struct MessageTests {
 
         #expect(msg.prefix == "nick!user@host.com")
         #expect(msg.nick == "nick")
-        #expect(msg.user == "user")
-        #expect(msg.host == "host.com")
+        #expect(msg.user?.username == "user")
+        #expect(msg.user?.host == "host.com")
         #expect(msg.command == "PRIVMSG")
     }
 
@@ -84,8 +84,8 @@ struct MessageTests {
         let msg = Message.parse(":nick!user PRIVMSG #channel :Hello")
 
         #expect(msg.nick == "nick")
-        #expect(msg.user == "user")
-        #expect(msg.host == nil)
+        #expect(msg.user?.username == "user")
+        #expect(msg.user?.host == nil)
     }
 
     @Test("Nick only prefix")
@@ -93,8 +93,8 @@ struct MessageTests {
         let msg = Message.parse(":nick QUIT :Goodbye")
 
         #expect(msg.nick == "nick")
-        #expect(msg.user == nil)
-        #expect(msg.host == nil)
+        #expect(msg.user?.username == nil)
+        #expect(msg.user?.host == nil)
     }
 
     // MARK: - Tag Parsing (IRCv3)
@@ -470,8 +470,8 @@ struct MessageTests {
         #expect(msg.tags["msgid"] == "abc123")
         #expect(msg.tags["account"] == "testuser")
         #expect(msg.nick == "nick")
-        #expect(msg.user == "user")
-        #expect(msg.host == "host.com")
+        #expect(msg.user?.username == "user")
+        #expect(msg.user?.host == "host.com")
         #expect(msg.command == "PRIVMSG")
         #expect(msg.target == "#channel")
         #expect(msg.text == "Hello, world!")
