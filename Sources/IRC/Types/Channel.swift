@@ -41,8 +41,8 @@ public struct Channel: Identifiable, Sendable {
         case voice = "+"
     }
 
-    public init(name: String, topic: Topic? = nil, modes: Set<Mode>, modeParams: [String : String],
-                created: Date? = nil, members: [String : Set<Prefix>]) {
+    public init(name: String, topic: Topic? = nil, modes: Set<Mode> = [], modeParams: [String : String] = [:],
+                created: Date? = nil, members: [String : Set<Prefix>] = [:]) {
         self.name = name
         self.topic = topic
         self.modes = modes
