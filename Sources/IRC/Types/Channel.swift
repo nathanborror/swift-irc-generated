@@ -50,4 +50,13 @@ public struct Channel: Identifiable, Sendable {
         self.created = created
         self.members = members
     }
+
+    public mutating func apply(modes value: String) {
+        self.modes = Set(value.compactMap { Mode(rawValue: String($0)) })
+    }
+
+    public mutating func apply(member nick: String, prefix value: String) {
+        let prefixChars = value.filter { !"HG*".contains($0) } // Skip H/G (here/gone) and * (IRC operator)
+        members[nick] = Set(prefixChars.compactMap { Prefix(rawValue: String($0)) })
+    }
 }
