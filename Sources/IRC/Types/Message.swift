@@ -204,7 +204,7 @@ extension Message {
     /// Gets the symbolic name for a numeric reply (e.g., "001" -> "RPL_WELCOME")
     public var numericName: String? {
         guard let code = numericCode else { return nil }
-        return NumericReply.name(for: code)
+        return NumericReply(rawValue: code)?.name
     }
 
     /// Parses and returns the timestamp from the IRCv3 'time' tag if available
@@ -227,247 +227,247 @@ extension Message {
 // MARK: - Numeric Reply Codes
 
 extension Message {
+
     /// IRC numeric reply codes
-    public enum NumericReply {
+    public enum NumericReply: Int {
+
         // Connection/Welcome (001-099)
-        public static let RPL_WELCOME = 1
-        public static let RPL_YOURHOST = 2
-        public static let RPL_CREATED = 3
-        public static let RPL_MYINFO = 4
-        public static let RPL_ISUPPORT = 5
-        public static let RPL_BOUNCE = 10
+        case RPL_WELCOME = 1
+        case RPL_YOURHOST = 2
+        case RPL_CREATED = 3
+        case RPL_MYINFO = 4
+        case RPL_ISUPPORT = 5
+        case RPL_BOUNCE = 10
 
         // Statistics (200-299)
-        public static let RPL_STATSCOMMANDS = 212
-        public static let RPL_ENDOFSTATS = 219
-        public static let RPL_UMODEIS = 221
-        public static let RPL_STATSUPTIME = 242
-        public static let RPL_LUSERCLIENT = 251
-        public static let RPL_LUSEROP = 252
-        public static let RPL_LUSERUNKNOWN = 253
-        public static let RPL_LUSERCHANNELS = 254
-        public static let RPL_LUSERME = 255
-        public static let RPL_ADMINME = 256
-        public static let RPL_ADMINLOC1 = 257
-        public static let RPL_ADMINLOC2 = 258
-        public static let RPL_ADMINEMAIL = 259
+        case RPL_STATSCOMMANDS = 212
+        case RPL_ENDOFSTATS = 219
+        case RPL_UMODEIS = 221
+        case RPL_STATSUPTIME = 242
+        case RPL_LUSERCLIENT = 251
+        case RPL_LUSEROP = 252
+        case RPL_LUSERUNKNOWN = 253
+        case RPL_LUSERCHANNELS = 254
+        case RPL_LUSERME = 255
+        case RPL_ADMINME = 256
+        case RPL_ADMINLOC1 = 257
+        case RPL_ADMINLOC2 = 258
+        case RPL_ADMINEMAIL = 259
 
         // Server/Network Info (300-399)
-        public static let RPL_NONE = 300
-        public static let RPL_AWAY = 301
-        public static let RPL_USERHOST = 302
-        public static let RPL_ISON = 303
-        public static let RPL_UNAWAY = 305
-        public static let RPL_NOWAWAY = 306
-        public static let RPL_WHOISUSER = 311
-        public static let RPL_WHOISSERVER = 312
-        public static let RPL_WHOISOPERATOR = 313
-        public static let RPL_WHOWASUSER = 314
-        public static let RPL_ENDOFWHO = 315
-        public static let RPL_WHOISIDLE = 317
-        public static let RPL_ENDOFWHOIS = 318
-        public static let RPL_WHOISCHANNELS = 319
-        public static let RPL_LISTSTART = 321
-        public static let RPL_LIST = 322
-        public static let RPL_LISTEND = 323
-        public static let RPL_CHANNELMODEIS = 324
-        public static let RPL_CREATIONTIME = 329
-        public static let RPL_NOTOPIC = 331
-        public static let RPL_TOPIC = 332
-        public static let RPL_TOPICWHOTIME = 333
-        public static let RPL_INVITING = 341
-        public static let RPL_INVITELIST = 346
-        public static let RPL_ENDOFINVITELIST = 347
-        public static let RPL_EXCEPTLIST = 348
-        public static let RPL_ENDOFEXCEPTLIST = 349
-        public static let RPL_VERSION = 351
-        public static let RPL_WHOREPLY = 352
-        public static let RPL_NAMREPLY = 353
-        public static let RPL_LINKS = 364
-        public static let RPL_ENDOFLINKS = 365
-        public static let RPL_ENDOFNAMES = 366
-        public static let RPL_BANLIST = 367
-        public static let RPL_ENDOFBANLIST = 368
-        public static let RPL_ENDOFWHOWAS = 369
-        public static let RPL_INFO = 371
-        public static let RPL_ENDOFINFO = 374
-        public static let RPL_MOTDSTART = 375
-        public static let RPL_MOTD = 372
-        public static let RPL_ENDOFMOTD = 376
-        public static let RPL_YOUREOPER = 381
-        public static let RPL_REHASHING = 382
-        public static let RPL_TIME = 391
+        case RPL_NONE = 300
+        case RPL_AWAY = 301
+        case RPL_USERHOST = 302
+        case RPL_ISON = 303
+        case RPL_UNAWAY = 305
+        case RPL_NOWAWAY = 306
+        case RPL_WHOISUSER = 311
+        case RPL_WHOISSERVER = 312
+        case RPL_WHOISOPERATOR = 313
+        case RPL_WHOWASUSER = 314
+        case RPL_ENDOFWHO = 315
+        case RPL_WHOISIDLE = 317
+        case RPL_ENDOFWHOIS = 318
+        case RPL_WHOISCHANNELS = 319
+        case RPL_LISTSTART = 321
+        case RPL_LIST = 322
+        case RPL_LISTEND = 323
+        case RPL_CHANNELMODEIS = 324
+        case RPL_CREATIONTIME = 329
+        case RPL_NOTOPIC = 331
+        case RPL_TOPIC = 332
+        case RPL_TOPICWHOTIME = 333
+        case RPL_INVITING = 341
+        case RPL_INVITELIST = 346
+        case RPL_ENDOFINVITELIST = 347
+        case RPL_EXCEPTLIST = 348
+        case RPL_ENDOFEXCEPTLIST = 349
+        case RPL_VERSION = 351
+        case RPL_WHOREPLY = 352
+        case RPL_NAMREPLY = 353
+        case RPL_LINKS = 364
+        case RPL_ENDOFLINKS = 365
+        case RPL_ENDOFNAMES = 366
+        case RPL_BANLIST = 367
+        case RPL_ENDOFBANLIST = 368
+        case RPL_ENDOFWHOWAS = 369
+        case RPL_INFO = 371
+        case RPL_ENDOFINFO = 374
+        case RPL_MOTDSTART = 375
+        case RPL_MOTD = 372
+        case RPL_ENDOFMOTD = 376
+        case RPL_YOUREOPER = 381
+        case RPL_REHASHING = 382
+        case RPL_TIME = 391
 
         // Errors (400-599)
-        public static let ERR_NOSUCHNICK = 401
-        public static let ERR_NOSUCHSERVER = 402
-        public static let ERR_NOSUCHCHANNEL = 403
-        public static let ERR_CANNOTSENDTOCHAN = 404
-        public static let ERR_TOOMANYCHANNELS = 405
-        public static let ERR_WASNOSUCHNICK = 406
-        public static let ERR_TOOMANYTARGETS = 407
-        public static let ERR_NOORIGIN = 409
-        public static let ERR_NORECIPIENT = 411
-        public static let ERR_NOTEXTTOSEND = 412
-        public static let ERR_NOTOPLEVEL = 413
-        public static let ERR_WILDTOPLEVEL = 414
-        public static let ERR_UNKNOWNCOMMAND = 421
-        public static let ERR_NOMOTD = 422
-        public static let ERR_NOADMININFO = 423
-        public static let ERR_NONICKNAMEGIVEN = 431
-        public static let ERR_ERRONEUSNICKNAME = 432
-        public static let ERR_NICKNAMEINUSE = 433
-        public static let ERR_NICKCOLLISION = 436
-        public static let ERR_USERNOTINCHANNEL = 441
-        public static let ERR_NOTONCHANNEL = 442
-        public static let ERR_USERONCHANNEL = 443
-        public static let ERR_NOTREGISTERED = 451
-        public static let ERR_NEEDMOREPARAMS = 461
-        public static let ERR_ALREADYREGISTERED = 462
-        public static let ERR_PASSWDMISMATCH = 464
-        public static let ERR_YOUREBANNEDCREEP = 465
-        public static let ERR_KEYSET = 467
-        public static let ERR_CHANNELISFULL = 471
-        public static let ERR_UNKNOWNMODE = 472
-        public static let ERR_INVITEONLYCHAN = 473
-        public static let ERR_BANNEDFROMCHAN = 474
-        public static let ERR_BADCHANNELKEY = 475
-        public static let ERR_BADCHANMASK = 476
-        public static let ERR_NOPRIVILEGES = 481
-        public static let ERR_CHANOPRIVSNEEDED = 482
-        public static let ERR_CANTKILLSERVER = 483
-        public static let ERR_NOOPERHOST = 491
-        public static let ERR_UMODEUNKNOWNFLAG = 501
-        public static let ERR_USERSDONTMATCH = 502
+        case ERR_NOSUCHNICK = 401
+        case ERR_NOSUCHSERVER = 402
+        case ERR_NOSUCHCHANNEL = 403
+        case ERR_CANNOTSENDTOCHAN = 404
+        case ERR_TOOMANYCHANNELS = 405
+        case ERR_WASNOSUCHNICK = 406
+        case ERR_TOOMANYTARGETS = 407
+        case ERR_NOORIGIN = 409
+        case ERR_NORECIPIENT = 411
+        case ERR_NOTEXTTOSEND = 412
+        case ERR_NOTOPLEVEL = 413
+        case ERR_WILDTOPLEVEL = 414
+        case ERR_UNKNOWNCOMMAND = 421
+        case ERR_NOMOTD = 422
+        case ERR_NOADMININFO = 423
+        case ERR_NONICKNAMEGIVEN = 431
+        case ERR_ERRONEUSNICKNAME = 432
+        case ERR_NICKNAMEINUSE = 433
+        case ERR_NICKCOLLISION = 436
+        case ERR_USERNOTINCHANNEL = 441
+        case ERR_NOTONCHANNEL = 442
+        case ERR_USERONCHANNEL = 443
+        case ERR_NOTREGISTERED = 451
+        case ERR_NEEDMOREPARAMS = 461
+        case ERR_ALREADYREGISTERED = 462
+        case ERR_PASSWDMISMATCH = 464
+        case ERR_YOUREBANNEDCREEP = 465
+        case ERR_KEYSET = 467
+        case ERR_CHANNELISFULL = 471
+        case ERR_UNKNOWNMODE = 472
+        case ERR_INVITEONLYCHAN = 473
+        case ERR_BANNEDFROMCHAN = 474
+        case ERR_BADCHANNELKEY = 475
+        case ERR_BADCHANMASK = 476
+        case ERR_NOPRIVILEGES = 481
+        case ERR_CHANOPRIVSNEEDED = 482
+        case ERR_CANTKILLSERVER = 483
+        case ERR_NOOPERHOST = 491
+        case ERR_UMODEUNKNOWNFLAG = 501
+        case ERR_USERSDONTMATCH = 502
 
         // SASL (900-909)
-        public static let RPL_LOGGEDIN = 900
-        public static let RPL_LOGGEDOUT = 901
-        public static let RPL_SASLSUCCESS = 903
-        public static let ERR_SASLFAIL = 904
-        public static let ERR_SASLTOOLONG = 905
-        public static let ERR_SASLABORTED = 906
-        public static let ERR_SASLALREADY = 907
+        case RPL_LOGGEDIN = 900
+        case RPL_LOGGEDOUT = 901
+        case RPL_SASLSUCCESS = 903
+        case ERR_SASLFAIL = 904
+        case ERR_SASLTOOLONG = 905
+        case ERR_SASLABORTED = 906
+        case ERR_SASLALREADY = 907
 
         /// Maps numeric codes to their symbolic names
-        public static func name(for code: Int) -> String? {
-            switch code {
-            case 1: return "RPL_WELCOME"
-            case 2: return "RPL_YOURHOST"
-            case 3: return "RPL_CREATED"
-            case 4: return "RPL_MYINFO"
-            case 5: return "RPL_ISUPPORT"
-            case 10: return "RPL_BOUNCE"
+        public var name: String {
+            switch self {
+            case .RPL_WELCOME: "RPL_WELCOME"
+            case .RPL_YOURHOST: "RPL_YOURHOST"
+            case .RPL_CREATED: "RPL_CREATED"
+            case .RPL_MYINFO: "RPL_MYINFO"
+            case .RPL_ISUPPORT: "RPL_ISUPPORT"
+            case .RPL_BOUNCE: "RPL_BOUNCE"
 
-            case 212: return "RPL_STATSCOMMANDS"
-            case 219: return "RPL_ENDOFSTATS"
-            case 221: return "RPL_UMODEIS"
-            case 242: return "RPL_STATSUPTIME"
-            case 251: return "RPL_LUSERCLIENT"
-            case 252: return "RPL_LUSEROP"
-            case 253: return "RPL_LUSERUNKNOWN"
-            case 254: return "RPL_LUSERCHANNELS"
-            case 255: return "RPL_LUSERME"
-            case 256: return "RPL_ADMINME"
-            case 257: return "RPL_ADMINLOC1"
-            case 258: return "RPL_ADMINLOC2"
-            case 259: return "RPL_ADMINEMAIL"
+            case .RPL_STATSCOMMANDS: "RPL_STATSCOMMANDS"
+            case .RPL_ENDOFSTATS: "RPL_ENDOFSTATS"
+            case .RPL_UMODEIS: "RPL_UMODEIS"
+            case .RPL_STATSUPTIME: "RPL_STATSUPTIME"
+            case .RPL_LUSERCLIENT: "RPL_LUSERCLIENT"
+            case .RPL_LUSEROP: "RPL_LUSEROP"
+            case .RPL_LUSERUNKNOWN: "RPL_LUSERUNKNOWN"
+            case .RPL_LUSERCHANNELS: "RPL_LUSERCHANNELS"
+            case .RPL_LUSERME: "RPL_LUSERME"
+            case .RPL_ADMINME: "RPL_ADMINME"
+            case .RPL_ADMINLOC1: "RPL_ADMINLOC1"
+            case .RPL_ADMINLOC2: "RPL_ADMINLOC2"
+            case .RPL_ADMINEMAIL: "RPL_ADMINEMAIL"
 
-            case 300: return "RPL_NONE"
-            case 301: return "RPL_AWAY"
-            case 302: return "RPL_USERHOST"
-            case 303: return "RPL_ISON"
-            case 305: return "RPL_UNAWAY"
-            case 306: return "RPL_NOWAWAY"
-            case 311: return "RPL_WHOISUSER"
-            case 312: return "RPL_WHOISSERVER"
-            case 313: return "RPL_WHOISOPERATOR"
-            case 314: return "RPL_WHOWASUSER"
-            case 315: return "RPL_ENDOFWHO"
-            case 317: return "RPL_WHOISIDLE"
-            case 318: return "RPL_ENDOFWHOIS"
-            case 319: return "RPL_WHOISCHANNELS"
-            case 321: return "RPL_LISTSTART"
-            case 322: return "RPL_LIST"
-            case 323: return "RPL_LISTEND"
-            case 324: return "RPL_CHANNELMODEIS"
-            case 329: return "RPL_CREATIONTIME"
-            case 331: return "RPL_NOTOPIC"
-            case 332: return "RPL_TOPIC"
-            case 333: return "RPL_TOPICWHOTIME"
-            case 341: return "RPL_INVITING"
-            case 346: return "RPL_INVITELIST"
-            case 347: return "RPL_ENDOFINVITELIST"
-            case 348: return "RPL_EXCEPTLIST"
-            case 349: return "RPL_ENDOFEXCEPTLIST"
-            case 351: return "RPL_VERSION"
-            case 352: return "RPL_WHOREPLY"
-            case 353: return "RPL_NAMREPLY"
-            case 364: return "RPL_LINKS"
-            case 365: return "RPL_ENDOFLINKS"
-            case 366: return "RPL_ENDOFNAMES"
-            case 367: return "RPL_BANLIST"
-            case 368: return "RPL_ENDOFBANLIST"
-            case 369: return "RPL_ENDOFWHOWAS"
-            case 371: return "RPL_INFO"
-            case 372: return "RPL_MOTD"
-            case 374: return "RPL_ENDOFINFO"
-            case 375: return "RPL_MOTDSTART"
-            case 376: return "RPL_ENDOFMOTD"
-            case 381: return "RPL_YOUREOPER"
-            case 382: return "RPL_REHASHING"
-            case 391: return "RPL_TIME"
+            case .RPL_NONE: "RPL_NONE"
+            case .RPL_AWAY: "RPL_AWAY"
+            case .RPL_USERHOST: "RPL_USERHOST"
+            case .RPL_ISON: "RPL_ISON"
+            case .RPL_UNAWAY: "RPL_UNAWAY"
+            case .RPL_NOWAWAY: "RPL_NOWAWAY"
+            case .RPL_WHOISUSER: "RPL_WHOISUSER"
+            case .RPL_WHOISSERVER: "RPL_WHOISSERVER"
+            case .RPL_WHOISOPERATOR: "RPL_WHOISOPERATOR"
+            case .RPL_WHOWASUSER: "RPL_WHOWASUSER"
+            case .RPL_ENDOFWHO: "RPL_ENDOFWHO"
+            case .RPL_WHOISIDLE: "RPL_WHOISIDLE"
+            case .RPL_ENDOFWHOIS: "RPL_ENDOFWHOIS"
+            case .RPL_WHOISCHANNELS: "RPL_WHOISCHANNELS"
+            case .RPL_LISTSTART: "RPL_LISTSTART"
+            case .RPL_LIST: "RPL_LIST"
+            case .RPL_LISTEND: "RPL_LISTEND"
+            case .RPL_CHANNELMODEIS: "RPL_CHANNELMODEIS"
+            case .RPL_CREATIONTIME: "RPL_CREATIONTIME"
+            case .RPL_NOTOPIC: "RPL_NOTOPIC"
+            case .RPL_TOPIC: "RPL_TOPIC"
+            case .RPL_TOPICWHOTIME: "RPL_TOPICWHOTIME"
+            case .RPL_INVITING: "RPL_INVITING"
+            case .RPL_INVITELIST: "RPL_INVITELIST"
+            case .RPL_ENDOFINVITELIST: "RPL_ENDOFINVITELIST"
+            case .RPL_EXCEPTLIST: "RPL_EXCEPTLIST"
+            case .RPL_ENDOFEXCEPTLIST: "RPL_ENDOFEXCEPTLIST"
+            case .RPL_VERSION: "RPL_VERSION"
+            case .RPL_WHOREPLY: "RPL_WHOREPLY"
+            case .RPL_NAMREPLY: "RPL_NAMREPLY"
+            case .RPL_LINKS: "RPL_LINKS"
+            case .RPL_ENDOFLINKS: "RPL_ENDOFLINKS"
+            case .RPL_ENDOFNAMES: "RPL_ENDOFNAMES"
+            case .RPL_BANLIST: "RPL_BANLIST"
+            case .RPL_ENDOFBANLIST: "RPL_ENDOFBANLIST"
+            case .RPL_ENDOFWHOWAS: "RPL_ENDOFWHOWAS"
+            case .RPL_INFO: "RPL_INFO"
+            case .RPL_MOTD: "RPL_MOTD"
+            case .RPL_ENDOFINFO: "RPL_ENDOFINFO"
+            case .RPL_MOTDSTART: "RPL_MOTDSTART"
+            case .RPL_ENDOFMOTD: "RPL_ENDOFMOTD"
+            case .RPL_YOUREOPER: "RPL_YOUREOPER"
+            case .RPL_REHASHING: "RPL_REHASHING"
+            case .RPL_TIME: "RPL_TIME"
 
-            case 401: return "ERR_NOSUCHNICK"
-            case 402: return "ERR_NOSUCHSERVER"
-            case 403: return "ERR_NOSUCHCHANNEL"
-            case 404: return "ERR_CANNOTSENDTOCHAN"
-            case 405: return "ERR_TOOMANYCHANNELS"
-            case 406: return "ERR_WASNOSUCHNICK"
-            case 407: return "ERR_TOOMANYTARGETS"
-            case 409: return "ERR_NOORIGIN"
-            case 411: return "ERR_NORECIPIENT"
-            case 412: return "ERR_NOTEXTTOSEND"
-            case 413: return "ERR_NOTOPLEVEL"
-            case 414: return "ERR_WILDTOPLEVEL"
-            case 421: return "ERR_UNKNOWNCOMMAND"
-            case 422: return "ERR_NOMOTD"
-            case 423: return "ERR_NOADMININFO"
-            case 431: return "ERR_NONICKNAMEGIVEN"
-            case 432: return "ERR_ERRONEUSNICKNAME"
-            case 433: return "ERR_NICKNAMEINUSE"
-            case 436: return "ERR_NICKCOLLISION"
-            case 441: return "ERR_USERNOTINCHANNEL"
-            case 442: return "ERR_NOTONCHANNEL"
-            case 443: return "ERR_USERONCHANNEL"
-            case 451: return "ERR_NOTREGISTERED"
-            case 461: return "ERR_NEEDMOREPARAMS"
-            case 462: return "ERR_ALREADYREGISTERED"
-            case 464: return "ERR_PASSWDMISMATCH"
-            case 465: return "ERR_YOUREBANNEDCREEP"
-            case 467: return "ERR_KEYSET"
-            case 471: return "ERR_CHANNELISFULL"
-            case 472: return "ERR_UNKNOWNMODE"
-            case 473: return "ERR_INVITEONLYCHAN"
-            case 474: return "ERR_BANNEDFROMCHAN"
-            case 475: return "ERR_BADCHANNELKEY"
-            case 476: return "ERR_BADCHANMASK"
-            case 481: return "ERR_NOPRIVILEGES"
-            case 482: return "ERR_CHANOPRIVSNEEDED"
-            case 483: return "ERR_CANTKILLSERVER"
-            case 491: return "ERR_NOOPERHOST"
-            case 501: return "ERR_UMODEUNKNOWNFLAG"
-            case 502: return "ERR_USERSDONTMATCH"
+            case .ERR_NOSUCHNICK: "ERR_NOSUCHNICK"
+            case .ERR_NOSUCHSERVER: "ERR_NOSUCHSERVER"
+            case .ERR_NOSUCHCHANNEL: "ERR_NOSUCHCHANNEL"
+            case .ERR_CANNOTSENDTOCHAN: "ERR_CANNOTSENDTOCHAN"
+            case .ERR_TOOMANYCHANNELS: "ERR_TOOMANYCHANNELS"
+            case .ERR_WASNOSUCHNICK: "ERR_WASNOSUCHNICK"
+            case .ERR_TOOMANYTARGETS: "ERR_TOOMANYTARGETS"
+            case .ERR_NOORIGIN: "ERR_NOORIGIN"
+            case .ERR_NORECIPIENT: "ERR_NORECIPIENT"
+            case .ERR_NOTEXTTOSEND: "ERR_NOTEXTTOSEND"
+            case .ERR_NOTOPLEVEL: "ERR_NOTOPLEVEL"
+            case .ERR_WILDTOPLEVEL: "ERR_WILDTOPLEVEL"
+            case .ERR_UNKNOWNCOMMAND: "ERR_UNKNOWNCOMMAND"
+            case .ERR_NOMOTD: "ERR_NOMOTD"
+            case .ERR_NOADMININFO: "ERR_NOADMININFO"
+            case .ERR_NONICKNAMEGIVEN: "ERR_NONICKNAMEGIVEN"
+            case .ERR_ERRONEUSNICKNAME: "ERR_ERRONEUSNICKNAME"
+            case .ERR_NICKNAMEINUSE: "ERR_NICKNAMEINUSE"
+            case .ERR_NICKCOLLISION: "ERR_NICKCOLLISION"
+            case .ERR_USERNOTINCHANNEL: "ERR_USERNOTINCHANNEL"
+            case .ERR_NOTONCHANNEL: "ERR_NOTONCHANNEL"
+            case .ERR_USERONCHANNEL: "ERR_USERONCHANNEL"
+            case .ERR_NOTREGISTERED: "ERR_NOTREGISTERED"
+            case .ERR_NEEDMOREPARAMS: "ERR_NEEDMOREPARAMS"
+            case .ERR_ALREADYREGISTERED: "ERR_ALREADYREGISTERED"
+            case .ERR_PASSWDMISMATCH: "ERR_PASSWDMISMATCH"
+            case .ERR_YOUREBANNEDCREEP: "ERR_YOUREBANNEDCREEP"
+            case .ERR_KEYSET: "ERR_KEYSET"
+            case .ERR_CHANNELISFULL: "ERR_CHANNELISFULL"
+            case .ERR_UNKNOWNMODE: "ERR_UNKNOWNMODE"
+            case .ERR_INVITEONLYCHAN: "ERR_INVITEONLYCHAN"
+            case .ERR_BANNEDFROMCHAN: "ERR_BANNEDFROMCHAN"
+            case .ERR_BADCHANNELKEY: "ERR_BADCHANNELKEY"
+            case .ERR_BADCHANMASK: "ERR_BADCHANMASK"
+            case .ERR_NOPRIVILEGES: "ERR_NOPRIVILEGES"
+            case .ERR_CHANOPRIVSNEEDED: "ERR_CHANOPRIVSNEEDED"
+            case .ERR_CANTKILLSERVER: "ERR_CANTKILLSERVER"
+            case .ERR_NOOPERHOST: "ERR_NOOPERHOST"
+            case .ERR_UMODEUNKNOWNFLAG: "ERR_UMODEUNKNOWNFLAG"
+            case .ERR_USERSDONTMATCH: "ERR_USERSDONTMATCH"
 
-            case 900: return "RPL_LOGGEDIN"
-            case 901: return "RPL_LOGGEDOUT"
-            case 903: return "RPL_SASLSUCCESS"
-            case 904: return "ERR_SASLFAIL"
-            case 905: return "ERR_SASLTOOLONG"
-            case 906: return "ERR_SASLABORTED"
-            case 907: return "ERR_SASLALREADY"
-
-            default: return nil
+            case .RPL_LOGGEDIN: "RPL_LOGGEDIN"
+            case .RPL_LOGGEDOUT: "RPL_LOGGEDOUT"
+            case .RPL_SASLSUCCESS: "RPL_SASLSUCCESS"
+            case .ERR_SASLFAIL: "ERR_SASLFAIL"
+            case .ERR_SASLTOOLONG: "ERR_SASLTOOLONG"
+            case .ERR_SASLABORTED: "ERR_SASLABORTED"
+            case .ERR_SASLALREADY: "ERR_SASLALREADY"
             }
         }
     }
