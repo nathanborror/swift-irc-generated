@@ -121,15 +121,16 @@ public actor Client {
     private var registrationAwaiters: [CheckedContinuation<Void, Never>] = []
 
     // CAP negotiation state
-    private enum CapState {
+    public enum CapState {
         case negotiating      // CAP LS sent, waiting for server caps
         case requesting       // CAP REQ sent, waiting for ACK/NAK
         case authenticating   // SASL authentication in progress
         case complete         // CAP negotiation finished (CAP END sent or not needed)
     }
-    private var capState: CapState = .negotiating
-    private var availableCaps: Set<String> = []
-    private var enabledCaps: Set<String> = []
+    public var capState: CapState = .negotiating
+    public var availableCaps: Set<String> = []
+    public var enabledCaps: Set<String> = []
+    
     private var saslAuthenticated = false
     private var nickUserSent = false
 
