@@ -13,7 +13,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/nathanborror/swift-irc-generated", branch: "main")
+    .package(url: "https://github.com/nathanborror/swift-irc", branch: "main")
 ]
 ```
 
